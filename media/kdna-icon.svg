@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#d1ad63" stroke-width="1.5">
+  <path d="M7 2c1.5 0 3 .5 4 2s1.5 3.5 1 6c-.5 2.5-2 4.5-4 6s-4 2-5.5 1.5S0 15.5 0 13c0-2.5 1-5 3-7S5.5 2 7 2z" transform="rotate(30 12 12)"/>
+  <path d="M17 2c1.5 0 3 .5 4 2s1.5 3.5 1 6c-.5 2.5-2 4.5-4 6s-4 2-5.5 1.5S10 15.5 10 13c0-2.5 1-5 3-7S15.5 2 17 2z" transform="rotate(-30 12 12)"/>
+  <line x1="8" y1="6" x2="16" y2="6" stroke-opacity="0.6"/>
+  <line x1="8" y1="12" x2="16" y2="12" stroke-opacity="0.6"/>
+  <line x1="8" y1="18" x2="16" y2="18" stroke-opacity="0.6"/>
+</svg>
