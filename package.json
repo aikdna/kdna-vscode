@@ -1,0 +1,141 @@
+{
+  "name": "kdna-vscode",
+  "displayName": "KDNA Domain Cognition",
+  "description": "Create, validate, preview, and manage KDNA domain cognition packages for AI agents",
+  "version": "0.1.0",
+  "publisher": "aikdna",
+  "license": "Apache-2.0",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Linters",
+    "Data Science"
+  ],
+  "keywords": [
+    "kdna",
+    "ai-agent",
+    "domain-cognition",
+    "aikdna"
+  ],
+  "activationEvents": [
+    "onLanguage:json",
+    "onCommand:kdna.validate",
+    "onCommand:kdna.preview",
+    "onView:kdna-domains"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "kdna-json",
+        "extensions": [
+          ".kdna"
+        ],
+        "aliases": [
+          "KDNA Domain Package"
+        ],
+        "icon": {
+          "light": "media/kdna-icon.svg",
+          "dark": "media/kdna-icon.svg"
+        }
+      }
+    ],
+    "commands": [
+      {
+        "command": "kdna.validate",
+        "title": "KDNA: Validate Domain"
+      },
+      {
+        "command": "kdna.pack",
+        "title": "KDNA: Pack Domain"
+      },
+      {
+        "command": "kdna.unpack",
+        "title": "KDNA: Unpack .kdna"
+      },
+      {
+        "command": "kdna.preview",
+        "title": "KDNA: Preview Domain"
+      },
+      {
+        "command": "kdna.install",
+        "title": "KDNA: Install Domain"
+      },
+      {
+        "command": "kdna.create",
+        "title": "KDNA: Create New Domain"
+      }
+    ],
+    "views": {
+      "explorer": [
+        {
+          "id": "kdna-domains",
+          "name": "KDNA Domains",
+          "icon": "media/kdna-icon.svg"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "kdna-domains",
+        "contents": "No KDNA domains found in this workspace.\n[Create New Domain](command:kdna.create)\n[Install Domain](command:kdna.install)"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "when": "resourceFilename == kdna.json || resourceExtname == .kdna",
+          "command": "kdna.preview",
+          "group": "navigation"
+        },
+        {
+          "when": "resourceFilename == kdna.json",
+          "command": "kdna.validate",
+          "group": "navigation"
+        },
+        {
+          "when": "resourceFilename == kdna.json",
+          "command": "kdna.pack",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run build",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "build": "webpack --mode production",
+    "lint": "eslint src --ext ts",
+    "test": "npm run compile && node --test out/test/unit/*.test.js",
+    "test:integration": "npm run compile && node out/test/runTest.js",
+    "package": "vsce package"
+  },
+  "dependencies": {
+    "@aikdna/kdna-core": "^0.1.0",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "jszip": "^3.10.1"
+  },
+  "devDependencies": {
+    "@types/glob": "^8.1.0",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/test-electron": "^2.3.0",
+    "@vscode/vsce": "^3.0.0",
+    "glob": "^13.0.6",
+    "mocha": "^11.7.5",
+    "ts-loader": "^9.5.0",
+    "typescript": "^5.4.0",
+    "webpack": "^5.90.0",
+    "webpack-cli": "^5.1.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aikdna/kdna-vscode.git"
+  },
+  "homepage": "https://aikdna.com"
+}
