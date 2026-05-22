@@ -3,17 +3,9 @@ name: kdna-vscode CI
 on:
   push:
     branches: [main]
-    paths:
-      - 'kdna-vscode/**'
   pull_request:
     branches: [main]
-    paths:
-      - 'kdna-vscode/**'
   workflow_dispatch:
-
-defaults:
-  run:
-    working-directory: kdna-vscode
 
 jobs:
   build-and-test:
@@ -30,7 +22,7 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'
-          cache-dependency-path: kdna-vscode/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
         run: npm ci
