@@ -5,3 +5,8 @@ dist/
 .env
 .DS_Store
 .vscode-test/
+
+# Added by security audit
+
+*.log
+logs/
