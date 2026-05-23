@@ -114,7 +114,7 @@
     "package": "vsce package"
   },
   "dependencies": {
-    "@aikdna/kdna-core": "^0.1.0",
+    "@aikdna/kdna-core": "^0.3.0",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
     "jszip": "^3.10.1"
