@@ -3,17 +3,9 @@ name: kdna-vscode CI
 on:
   push:
     branches: [main]
-    paths:
-      - 'kdna-vscode/**'
   pull_request:
     branches: [main]
-    paths:
-      - 'kdna-vscode/**'
   workflow_dispatch:
-
-defaults:
-  run:
-    working-directory: kdna-vscode
 
 jobs:
   build-and-test:
