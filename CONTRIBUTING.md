@@ -1,80 +1,46 @@
-# Contributing to KDNA
+# Contributing to KDNA VS Code Extension
 
-This repository is the KDNA protocol specification. You can contribute at multiple levels.
+This repository is the KDNA VS Code extension — a tool for validating, previewing, and packaging KDNA domains directly in your editor.
 
-## Contribution Types
+For protocol-level guidance (schema, spec, judgment patterns), see the [main KDNA CONTRIBUTING.md](https://github.com/aikdna/kdna/blob/main/CONTRIBUTING.md).
 
-### 1. Protocol Contribution
-Improve the KDNA specification, schema, validators, CLI, loader, skills, or documentation.
+## Development Setup
 
-**Scope:** SPEC.md, schema/*, validators/*, src/*, docs/*, tests/*
-
-### 2. Judgment Pattern Contribution
-Submit a reusable judgment pattern — the smallest unit of KDNA.
-
-**Template:**
-```
-Pattern ID: (e.g., discussion-vs-decision)
-Surface Signal: (what the user says or what data shows)
-Common Misread: (how ordinary AI gets this wrong)
-Expert Frame: (how an expert re-interprets the signal)
-Diagnostic Questions: (what to ask before acting)
-Decision Boundary: (when to classify as unresolved)
-Action Implication: (what follows from the judgment)
-Positive Cases: (at least 2 examples where the pattern works)
-Negative Cases: (at least 1 example where the pattern should NOT trigger)
+```bash
+git clone https://github.com/aikdna/kdna-vscode.git
+cd kdna-vscode
+npm install
+npm run compile
 ```
 
-**Submit to:** `benchmarks/judgment-benchmark.json` via PR
+## Running Tests
 
-### 3. Domain Package Contribution
-Submit a complete KDNA domain package.
-
-1. Create a repository under `kdna-<domain>` naming convention
-2. Include at least `KDNA_Core.json` and `KDNA_Patterns.json`
-3. Ensure the domain passes `kdna validate`
-4. Include `kdna.json` manifest and `README.md`
-5. Add tests in `tests/before-after.json` (minimum 3 cases)
-6. Open a PR adding an entry to `registry/domains.json`
-
-### 4. Case Contribution
-Submit test cases that prove KDNA changes judgment.
-
-Add entries to existing domain `tests/before-after.json` or submit new test files following the format:
-```json
-{
-  "input": "...",
-  "without_kdna": { "expected_approach": "...", "common_mistake": "..." },
-  "with_kdna": { "expected_approach": "...", "signal_reading": "...", "diagnosis_path": "..." },
-  "domain": "...",
-  "trigger": "..."
-}
+```bash
+npm test
 ```
 
-### 5. Cluster Contribution
-Submit a KDNA Cluster — a composable group of packages.
+## Extension Features
 
-1. Create `KDNA_Cluster.json` following the schema
-2. Ensure all referenced packages exist in the registry
-3. Include composition rules and routing questions
-4. Submit to `examples/clusters/`
+- **Validation**: Real-time `kdna validate` feedback in the editor
+- **Preview**: Render judgment cards and axiom trees inline
+- **Pack**: Package .kdna files from the editor sidebar
+- **IntelliSense**: Schema-aware autocomplete for KDNA JSON files
 
-### 6. Evaluation Report Contribution
-Submit a report comparing agent judgment with and without KDNA.
+## Pull Request Process
 
-Include: domain name, model used, test cases, baseline scores, KDNA-loaded scores, specific improvements observed.
+1. Open an issue describing the feature or bug fix
+2. Fork the repo and create a branch
+3. Ensure tests pass: `npm test`
+4. Add tests for new functionality
+5. Submit a PR against the `main` branch
 
-## Quality Requirements
+## Code Style
 
-All contributions must:
-- Pass `kdna validate` (for packages) or JSON schema validation (for clusters)
-- Have unique IDs across the submission
-- Include reasons for every banned term and key distinctions for every misunderstanding
-- Not contain proprietary or private data
-- Use clear domain boundaries
+- TypeScript throughout
+- Follow existing patterns in `src/`
+- Extension tests use the VS Code testing API
 
 ## License
 
-- Code contributions: Apache 2.0
-- Documentation and examples: CC BY 4.0
-- Domain packages: Contributor's choice (CC BY 4.0 recommended for open domains)
+- Code: Apache 2.0
+- Documentation: CC BY 4.0

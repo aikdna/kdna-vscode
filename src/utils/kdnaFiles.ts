@@ -37,15 +37,18 @@ export async function findDomainDir(fileUri: vscode.Uri): Promise<vscode.Uri | n
 
 /**
  * Discover all KDNA domain directories in the workspace.
- * Scans up to 3 levels deep.
+ * Scan depth is configurable via kdna.scanDepth setting (default: 3).
  */
 export async function findDomainDirs(): Promise<vscode.Uri[]> {
   const workspaceFolders = vscode.workspace.workspaceFolders;
   if (!workspaceFolders) return [];
 
+  const config = vscode.workspace.getConfiguration('kdna');
+  const maxDepth = config.get<number>('scanDepth', 3);
+
   const results: vscode.Uri[] = [];
   for (const folder of workspaceFolders) {
-    await scanDir(folder.uri, 0, 3, results);
+    await scanDir(folder.uri, 0, maxDepth, results);
   }
   return results;
 }

@@ -16,8 +16,7 @@
   "keywords": [
     "kdna",
     "ai-agent",
-    "domain-cognition",
-    "aikdna"
+    "domain-cognition"
   ],
   "activationEvents": [
     "onLanguage:json",
@@ -101,6 +100,18 @@
           "group": "navigation"
         }
       ]
+    },
+    "configuration": {
+      "title": "KDNA",
+      "properties": {
+        "kdna.scanDepth": {
+          "type": "number",
+          "default": 3,
+          "minimum": 1,
+          "maximum": 10,
+          "description": "Maximum directory depth to scan for KDNA domain directories. Increase for deep monorepo structures."
+        }
+      }
     }
   },
   "scripts": {

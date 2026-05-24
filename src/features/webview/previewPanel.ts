@@ -104,6 +104,9 @@ body {
   font-size: var(--vscode-font-size);
 }
 ${styles.replace(/:root\{[^}]*\}/g, ':root{--bg:var(--vscode-editor-background);--bg2:var(--vscode-sideBar-background);--border:var(--vscode-panel-border);--text:var(--vscode-editor-foreground);--dim:var(--vscode-descriptionForeground);--muted:var(--vscode-disabledForeground);--accent:var(--vscode-textLink-foreground);--green:#73d18d;--red:#f48771;--blue:#91aef3}')}
+</style>
+</head>
+<body>
 ${bodyContent}
 </body>
 </html>`;
