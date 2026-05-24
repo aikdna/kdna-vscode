@@ -31,8 +31,8 @@ kdna pack ./my-domain       # Pack into .kdna container
 
 ## Related
 
-- [KDNA Studio Core](https://github.com/knowledge-dna/kdna-studio) — Authoring kernel
-- [kdna-cli](https://github.com/knowledge-dna/kdna-cli) — CLI runtime
+- [KDNA Studio Core](https://github.com/aikdna/kdna-studio) — Authoring kernel
+- [kdna-cli](https://github.com/aikdna/kdna-cli) — CLI runtime
 - [aikdna.com](https://aikdna.com)
 
 ## License

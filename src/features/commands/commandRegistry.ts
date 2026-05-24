@@ -229,7 +229,7 @@ async function cmdInstall() {
 
   try {
     const https = require('https');
-    const registryUrl = 'https://raw.githubusercontent.com/knowledge-dna/kdna-registry/main/domains.json';
+    const registryUrl = 'https://raw.githubusercontent.com/aikdna/kdna-registry/main/domains.json';
 
     const domains = await new Promise<any[]>((resolve, reject) => {
       https
