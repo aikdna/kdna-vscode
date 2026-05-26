@@ -10,7 +10,7 @@ import * as kdnaCore from '@aikdna/kdna-core';
 import { readDomainData, readJsonFile } from './kdnaFiles';
 
 /**
- * Load a KDNA domain from a workspace URI using kdna-core's data-first API.
+ * Load a KDNA dev source workspace using kdna-core's data-first API.
  */
 export async function loadDomainFromUri(
   domainDir: vscode.Uri,
@@ -21,7 +21,7 @@ export async function loadDomainFromUri(
 }
 
 /**
- * Load a KDNA domain from a .kdna ZIP file.
+ * Load a KDNA domain from a .kdna asset file.
  */
 export async function loadDomainFromKdnaFile(
   kdnaUri: vscode.Uri,
@@ -52,13 +52,13 @@ async function readZipJson(zip: any, filename: string): Promise<any> {
     return JSON.parse(text);
   } catch {
     console.warn(`[kdna] ZIP entry ${filename} is corrupted — skipping`);
-    vscode.window.showWarningMessage(`KDNA: ZIP entry "${filename}" is corrupted — file skipped. The .kdna dev package may be damaged.`);
+    vscode.window.showWarningMessage(`KDNA: ZIP entry "${filename}" is corrupted — file skipped. The .kdna asset may be damaged.`);
     return null;
   }
 }
 
 /**
- * Lint a domain directory using kdna-core.
+ * Lint a dev source workspace using kdna-core.
  */
 export async function lintDomainDir(domainDir: vscode.Uri): Promise<kdnaCore.LintResult> {
   const dataMap = await readDomainData(domainDir);
@@ -66,7 +66,7 @@ export async function lintDomainDir(domainDir: vscode.Uri): Promise<kdnaCore.Lin
 }
 
 /**
- * Validate a domain directory with JSON Schema using kdna-core.
+ * Validate a dev source workspace with JSON Schema using kdna-core.
  */
 export async function validateDomainDir(
   domainDir: vscode.Uri,

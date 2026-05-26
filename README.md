@@ -1,6 +1,10 @@
 # KDNA Protocol Tools for VS Code
 
-VS Code extension for creating, validating, previewing, and managing KDNA domain judgment packages. Part of the [KDNA Protocol](https://github.com/aikdna/kdna) ecosystem — the open judgment protocol for AI systems.
+VS Code extension for creating, validating, previewing, and managing KDNA developer source workspaces. Part of the [KDNA Protocol](https://github.com/aikdna/kdna) ecosystem — the open judgment protocol for AI systems.
+
+`.kdna` files are the canonical KDNA assets. This extension is a developer tool
+for editing the internal JSON source tree before it is packed, signed, and
+published as a `.kdna` asset.
 
 ## What is KDNA?
 
@@ -8,10 +12,10 @@ KDNA is an open judgment protocol for AI systems. It turns human-governed domain
 
 ## What this extension does
 
-- **Validate** KDNA domain files with real-time diagnostics
-- **Preview** domain structure in an interactive webview panel
-- **Pack/Unpack** `.kdna` container files
-- **Create** new domains from built-in templates
+- **Validate** KDNA dev source files with real-time diagnostics
+- **Preview** dev source structure in an interactive webview panel
+- **Build/inspect** `.kdna` asset files through the CLI
+- **Create** new source workspaces from built-in templates
 - **Diagnose** issues with banned term highlighting, ontology hovers, and cross-file checks
 
 ## Quick Demo
@@ -20,7 +24,7 @@ KDNA is an open judgment protocol for AI systems. It turns human-governed domain
 # Install the extension
 code --install-extension aikdna.kdna-vscode
 
-# Open a KDNA domain directory
+# Open a KDNA dev source workspace
 # Use Cmd+Shift+P → "KDNA: Validate Domain"
 # View results in the Problems panel
 ```
@@ -29,10 +33,10 @@ code --install-extension aikdna.kdna-vscode
 
 | Feature | Status | Notes |
 |---------|:------:|-------|
-| Validate | Beta | Real-time diagnostics as you edit KDNA JSON files |
-| Preview | Beta | Webview panel showing rendered domain structure |
-| Pack/Unpack | Beta | Create and extract `.kdna` container files |
-| Create | Beta | Scaffold new domains from templates |
+| Validate | Beta | Real-time diagnostics as you edit KDNA source JSON files |
+| Preview | Beta | Webview panel showing rendered source structure |
+| Build/Inspect | Beta | Create and inspect `.kdna` assets through the CLI |
+| Create | Beta | Scaffold new dev source workspaces from templates |
 | Diagnostics | Beta | Banned term highlighting, ontology concept hovers, cross-file consistency checks |
 | Studio Project | Planned | Support for `studio.project.json` and Judgment Cards |
 | Multi-language | Planned | Locale-aware card editing |
@@ -41,12 +45,12 @@ code --install-extension aikdna.kdna-vscode
 
 | Command | Description |
 |---------|-------------|
-| `KDNA: Validate Domain` | Run structure, trust, and judgment checks |
-| `KDNA: Pack Domain` | Bundle domain into a `.kdna` container |
-| `KDNA: Unpack .kdna` | Extract a `.kdna` container |
-| `KDNA: Preview Domain` | Open interactive domain preview |
-| `KDNA: Install Domain` | Install a domain from the registry |
-| `KDNA: Create New Domain` | Scaffold a new domain from template |
+| `KDNA: Validate Domain` | Validate the current dev source workspace |
+| `KDNA: Pack Domain` | Build a `.kdna` asset from a dev source workspace |
+| `KDNA: Unpack .kdna` | Developer-only extraction for inspection/debugging |
+| `KDNA: Preview Domain` | Open interactive source preview |
+| `KDNA: Install Domain` | Install a `.kdna` asset from the registry |
+| `KDNA: Create New Domain` | Scaffold a new dev source workspace from template |
 
 ## Supported File Types
 
@@ -57,7 +61,7 @@ code --install-extension aikdna.kdna-vscode
 - `KDNA_Reasoning.json` — Reasoning chains
 - `KDNA_Evolution.json` — Capability stages and evolution path
 - `KDNA_Cluster.json` — Domain cluster manifests
-- `.kdna` — Packaged domain containers
+- `.kdna` — Canonical KDNA asset files
 
 ## Requirements
 

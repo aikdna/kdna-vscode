@@ -65,7 +65,7 @@ async function pickKdnaFile(): Promise<vscode.Uri | null> {
   const uris = await vscode.window.showOpenDialog({
     canSelectFiles: true,
     canSelectFolders: false,
-    filters: { 'KDNA Package': ['kdna'] },
+    filters: { 'KDNA Asset': ['kdna'] },
     title: 'Select .kdna file',
   });
   return uris?.[0] || null;
@@ -145,7 +145,7 @@ async function cmdPack(domainUri?: vscode.Uri) {
   const name = info?.name || domainUri.path.split('/').pop() || 'domain';
   const outputUri = await vscode.window.showSaveDialog({
     defaultUri: vscode.Uri.joinPath(domainUri, `../${name}.kdna`),
-    filters: { 'KDNA Package': ['kdna'] },
+    filters: { 'KDNA Asset': ['kdna'] },
   });
   if (!outputUri) return;
 
@@ -213,7 +213,7 @@ async function cmdPreview(uri?: vscode.Uri) {
   } else {
     const domainDir = (await isKdnaDomainDir(uri)) ? uri : await findDomainDir(uri);
     if (!domainDir) {
-      vscode.window.showErrorMessage('Not a KDNA domain directory.');
+      vscode.window.showErrorMessage('Not a KDNA dev source workspace.');
       return;
     }
     PreviewPanel.createOrShow(domainDir, false);
