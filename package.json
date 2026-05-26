@@ -1,22 +1,24 @@
 {
   "name": "kdna-vscode",
-  "displayName": "KDNA Domain Cognition",
-  "description": "Create, validate, preview, and manage KDNA domain cognition packages for AI agents",
+  "displayName": "KDNA Protocol Tools",
+  "description": "Create, validate, preview, and manage KDNA domain judgment packages for AI agents. Part of the KDNA open judgment protocol ecosystem.",
   "version": "0.1.0",
   "publisher": "aikdna",
   "license": "Apache-2.0",
+  "icon": "media/kdna-icon.png",
   "engines": {
     "vscode": "^1.85.0"
   },
   "categories": [
     "Programming Languages",
     "Linters",
-    "Data Science"
+    "Other"
   ],
   "keywords": [
     "kdna",
     "ai-agent",
-    "domain-cognition"
+    "domain-judgment",
+    "judgment-protocol"
   ],
   "activationEvents": [
     "onLanguage:json",
