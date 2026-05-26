@@ -1,12 +1,12 @@
 /**
- * KDNA file discovery and domain detection utilities.
+ * KDNA dev source discovery utilities.
  */
 
 import * as vscode from 'vscode';
 import { KDNA_REQUIRED_FILES, KDNA_ALL_FILES } from '../constants';
 
 /**
- * Check if a directory is a KDNA domain (contains kdna.json + at least one KDNA_*.json).
+ * Check if a directory is a KDNA dev source workspace.
  */
 export async function isKdnaDomainDir(uri: vscode.Uri): Promise<boolean> {
   try {
@@ -19,7 +19,7 @@ export async function isKdnaDomainDir(uri: vscode.Uri): Promise<boolean> {
 }
 
 /**
- * Find the parent KDNA domain directory for a given file URI.
+ * Find the parent KDNA dev source workspace for a given file URI.
  * Walks up the directory tree looking for a directory with kdna.json.
  */
 export async function findDomainDir(fileUri: vscode.Uri): Promise<vscode.Uri | null> {
@@ -36,7 +36,7 @@ export async function findDomainDir(fileUri: vscode.Uri): Promise<vscode.Uri | n
 }
 
 /**
- * Discover all KDNA domain directories in the workspace.
+ * Discover all KDNA dev source workspaces in the current VS Code workspace.
  * Scan depth is configurable via kdna.scanDepth setting (default: 3).
  */
 export async function findDomainDirs(): Promise<vscode.Uri[]> {
@@ -106,7 +106,7 @@ export async function readJsonFile<T = any>(uri: vscode.Uri): Promise<T | null> 
 }
 
 /**
- * Read all KDNA JSON files from a domain directory into a data map.
+ * Read all KDNA JSON files from a dev source workspace into a data map.
  */
 export async function readDomainData(
   domainDir: vscode.Uri,
@@ -132,7 +132,7 @@ export async function readDomainData(
 }
 
 /**
- * Get domain display info from a domain directory.
+ * Get domain display info from a dev source workspace.
  */
 export async function getDomainInfo(domainDir: vscode.Uri): Promise<{
   name: string;
