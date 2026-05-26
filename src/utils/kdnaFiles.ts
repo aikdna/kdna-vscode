@@ -87,7 +87,7 @@ export function isKdnaFile(uri: vscode.Uri): boolean {
 }
 
 /**
- * Check if a file URI is a .kdna package file.
+ * Check if a file URI is a .kdna dev package file.
  */
 export function isKdnaPackageFile(uri: vscode.Uri): boolean {
   return uri.path.endsWith('.kdna');
