@@ -52,7 +52,7 @@ async function readZipJson(zip: any, filename: string): Promise<any> {
     return JSON.parse(text);
   } catch {
     console.warn(`[kdna] ZIP entry ${filename} is corrupted — skipping`);
-    vscode.window.showWarningMessage(`KDNA: ZIP entry "${filename}" is corrupted — file skipped. The .kdna package may be damaged.`);
+    vscode.window.showWarningMessage(`KDNA: ZIP entry "${filename}" is corrupted — file skipped. The .kdna dev package may be damaged.`);
     return null;
   }
 }

@@ -75,7 +75,7 @@ async function pickDomainOrKdna(): Promise<vscode.Uri | null> {
   const choice = await vscode.window.showQuickPick(
     [
       { label: 'Domain Directory', description: 'Select a KDNA domain folder in the workspace' },
-      { label: '.kdna File', description: 'Select a .kdna package file' },
+      { label: '.kdna File', description: 'Select a .kdna dev package file' },
     ],
     { placeHolder: 'Choose source type' },
   );
