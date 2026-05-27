@@ -130,14 +130,15 @@ suite('kdna-core Integration', () => {
     assert.ok(result.errors[0].includes('domain-b'), 'Error should mention mismatched domain');
   });
 
-  test('validateCrossFile should detect version mismatch', () => {
+  test('validateCrossFile should detect version mismatch as an error', () => {
     const dataMap: Record<string, any> = {
       'KDNA_Core.json': { meta: { domain: 'test', version: '0.4' } },
       'KDNA_Patterns.json': { meta: { domain: 'test', version: '0.5' } },
     };
 
     const result = kdnaCore.validateCrossFile(dataMap as any);
-    assert.ok(result.warnings.length > 0, 'Should warn about version mismatch');
+    assert.ok(result.errors.length > 0, 'Should error about version mismatch');
+    assert.ok(result.errors[0].includes('version'), 'Error should mention version mismatch');
   });
 
   test('renderPreviewHTML should produce valid HTML', () => {
