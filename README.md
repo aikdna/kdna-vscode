@@ -1,10 +1,12 @@
 # KDNA Protocol Tools for VS Code
 
-VS Code extension for creating, validating, previewing, and managing KDNA developer source workspaces. Part of the [KDNA Protocol](https://github.com/aikdna/kdna) ecosystem — the open judgment protocol for AI systems.
+VS Code extension for validating, previewing, and managing KDNA developer source workspaces. Part of the [KDNA Protocol](https://github.com/aikdna/kdna) ecosystem — the open judgment protocol for AI systems.
 
 `.kdna` files are the canonical KDNA assets. This extension is a developer tool
-for editing the internal JSON source tree before it is packed, signed, and
-published as a `.kdna` asset.
+for editing and diagnosing non-canonical dev source workspaces. It is not a
+canonical authoring authority. Trusted `.kdna` assets must be exported by KDNA
+Studio or a Studio-compatible compiler with authoring provenance and Human Lock
+evidence.
 
 ## What is KDNA?
 
@@ -14,8 +16,8 @@ KDNA is an open judgment protocol for AI systems. It turns human-governed domain
 
 - **Validate** KDNA dev source files with real-time diagnostics
 - **Preview** dev source structure in an interactive webview panel
-- **Build/inspect** `.kdna` asset files through the CLI
-- **Create** new source workspaces from built-in templates
+- **Bundle/inspect** dev-only `.kdna` files through the CLI
+- **Create** non-canonical dev source workspaces from built-in templates
 - **Diagnose** issues with banned term highlighting, ontology hovers, and cross-file checks
 
 ## Quick Demo
@@ -35,7 +37,7 @@ code --install-extension aikdna.kdna-vscode
 |---------|:------:|-------|
 | Validate | Beta | Real-time diagnostics as you edit KDNA source JSON files |
 | Preview | Beta | Webview panel showing rendered source structure |
-| Build/Inspect | Beta | Create and inspect `.kdna` assets through the CLI |
+| Bundle/Inspect | Beta | Create dev-only bundles and inspect `.kdna` assets through the CLI |
 | Create | Beta | Scaffold new dev source workspaces from templates |
 | Diagnostics | Beta | Banned term highlighting, ontology concept hovers, cross-file consistency checks |
 | Studio Project | Planned | Support for `studio.project.json` and Judgment Cards |
@@ -46,11 +48,11 @@ code --install-extension aikdna.kdna-vscode
 | Command | Description |
 |---------|-------------|
 | `KDNA: Validate Domain` | Validate the current dev source workspace |
-| `KDNA: Pack Domain` | Build a `.kdna` asset from a dev source workspace |
+| `KDNA: Bundle Dev Source` | Build a dev-only non-trusted `.kdna` bundle |
 | `KDNA: Unpack .kdna` | Developer-only extraction for inspection/debugging |
 | `KDNA: Preview Domain` | Open interactive source preview |
 | `KDNA: Install Domain` | Install a `.kdna` asset from the registry |
-| `KDNA: Create New Domain` | Scaffold a new dev source workspace from template |
+| `KDNA: Create Dev Source Workspace` | Scaffold a new dev source workspace from template |
 
 ## Supported File Types
 
@@ -66,7 +68,7 @@ code --install-extension aikdna.kdna-vscode
 ## Requirements
 
 - VS Code 1.85+
-- [`@aikdna/kdna-cli`](https://github.com/aikdna/kdna-cli) for validate/pack operations
+- [`@aikdna/kdna-cli`](https://github.com/aikdna/kdna-cli) for validate, inspect, and dev-only bundle operations
 
 ## Related
 

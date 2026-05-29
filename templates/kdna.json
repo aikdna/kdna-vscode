@@ -1,9 +1,12 @@
 {
-  "kdna_spec": "0.4",
+  "format": "kdna",
+  "format_version": "1.0",
+  "spec_version": "1.0-rc",
   "name": "example_domain",
   "version": "0.1.0",
-  "language": "en",
+  "judgment_version": "0.1.0",
   "languages": ["en"],
+  "default_language": "en",
   "created": "YYYY-MM-DD",
   "updated": "YYYY-MM-DD",
   "description": "One-sentence description of what judgment this domain improves.",
@@ -21,6 +24,15 @@
     "allow_training": true
   },
   "status": "experimental",
+  "quality_badge": "untested",
+  "authoring": {
+    "created_by": "manual-dev-source",
+    "authoring_tool": "kdna-vscode",
+    "human_lock_required": true,
+    "human_lock_count": 0,
+    "ai_assisted": false,
+    "human_confirmed": false
+  },
   "registry": {
     "repo": "https://github.com/your-org/your-repo"
   },

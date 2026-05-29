@@ -1,7 +1,7 @@
 {
   "name": "kdna-vscode",
   "displayName": "KDNA Protocol Tools",
-  "description": "Create, validate, preview, and manage KDNA domain judgment packages for AI agents. Part of the KDNA open judgment protocol ecosystem.",
+  "description": "Edit, validate, preview, and diagnose non-canonical KDNA dev source workspaces. Trusted .kdna creation belongs to Studio-compatible compilers.",
   "version": "0.1.0",
   "publisher": "aikdna",
   "license": "Apache-2.0",
@@ -50,7 +50,7 @@
       },
       {
         "command": "kdna.pack",
-        "title": "KDNA: Pack Domain"
+        "title": "KDNA: Bundle Dev Source"
       },
       {
         "command": "kdna.unpack",
@@ -66,7 +66,7 @@
       },
       {
         "command": "kdna.create",
-        "title": "KDNA: Create New Domain"
+        "title": "KDNA: Create Dev Source Workspace"
       }
     ],
     "views": {
@@ -81,7 +81,7 @@
     "viewsWelcome": [
       {
         "view": "kdna-domains",
-        "contents": "No KDNA domains found in this workspace.\n[Create New Domain](command:kdna.create)\n[Install Domain](command:kdna.install)"
+        "contents": "No KDNA dev source workspaces found in this workspace.\n[Create Dev Source Workspace](command:kdna.create)\n[Install .kdna Asset](command:kdna.install)"
       }
     ],
     "menus": {

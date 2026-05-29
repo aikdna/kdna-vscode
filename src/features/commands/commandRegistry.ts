@@ -75,7 +75,7 @@ async function pickDomainOrKdna(): Promise<vscode.Uri | null> {
   const choice = await vscode.window.showQuickPick(
     [
       { label: 'Domain Directory', description: 'Select a KDNA domain folder in the workspace' },
-      { label: '.kdna File', description: 'Select a .kdna dev package file' },
+      { label: '.kdna File', description: 'Select a canonical .kdna asset file' },
     ],
     { placeHolder: 'Choose source type' },
   );
@@ -162,7 +162,9 @@ async function cmdPack(domainUri?: vscode.Uri) {
 
   const zipBuffer = await zip.generateAsync({ type: 'uint8array' });
   await vscode.workspace.fs.writeFile(outputUri, zipBuffer);
-  vscode.window.showInformationMessage(`KDNA: Packed to ${outputUri.fsPath}`);
+  vscode.window.showWarningMessage(
+    `KDNA: Bundled dev source to ${outputUri.fsPath}. This is not a trusted asset; use KDNA Studio compile/export for trusted .kdna creation.`,
+  );
 }
 
 // ─── Unpack ──────────────────────────────────────────────────────────
@@ -332,7 +334,7 @@ async function cmdCreate() {
     canSelectFolders: true,
     canSelectMany: false,
     defaultUri,
-    title: 'Select parent directory for new domain',
+    title: 'Select parent directory for new dev source workspace',
   });
   if (!targetUris?.length) return;
 
@@ -341,11 +343,13 @@ async function cmdCreate() {
   const today = new Date().toISOString().slice(0, 10);
 
   const manifest = {
-    kdna_spec: '0.4',
+    format: 'kdna',
+    format_version: '1.0',
+    spec_version: '1.0-rc',
     name,
     version: '0.1.0',
-    language: 'en',
     languages: ['en'],
+    default_language: 'en',
     created: today,
     updated: today,
     description: 'One-sentence description of what judgment this domain improves.',
@@ -360,6 +364,15 @@ async function cmdCreate() {
       allow_training: true,
     },
     status: 'experimental',
+    quality_badge: 'untested',
+    authoring: {
+      created_by: 'manual-dev-source',
+      authoring_tool: 'kdna-vscode',
+      human_lock_required: true,
+      human_lock_count: 0,
+      ai_assisted: false,
+      human_confirmed: false,
+    },
     registry: { repo: 'https://github.com/your-org/your-repo' },
     file_count: 2,
     files: ['KDNA_Core.json', 'KDNA_Patterns.json'],
@@ -454,7 +467,9 @@ async function cmdCreate() {
   // Open the manifest
   const doc = await vscode.workspace.openTextDocument(vscode.Uri.joinPath(domainDir, 'kdna.json'));
   await vscode.window.showTextDocument(doc);
-  vscode.window.showInformationMessage(`KDNA: Created new domain "${name}"`);
+  vscode.window.showInformationMessage(
+    `KDNA: Created non-canonical dev source workspace "${name}". Use KDNA Studio to compile trusted .kdna assets.`,
+  );
 }
 
 // ─── Register All ────────────────────────────────────────────────────
