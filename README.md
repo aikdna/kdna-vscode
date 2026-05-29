@@ -8,6 +8,11 @@ canonical authoring authority. Trusted `.kdna` assets must be exported by KDNA
 Studio or a Studio-compatible compiler with authoring provenance and Human Lock
 evidence.
 
+A `.kdna` asset is not created by writing JSON files. It is compiled by a
+Studio-compatible authoring pipeline that performs human confirmation,
+validation, canonicalization, identity generation, digest computation, signing,
+optional encryption, and provenance recording.
+
 ## What is KDNA?
 
 KDNA is an open judgment protocol for AI systems. It turns human-governed domain judgment into portable structural assets that AI agents can load, trace, verify, and evolve.
