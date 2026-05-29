@@ -24,7 +24,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: TypeScript compile
         run: npx tsc --noEmit
@@ -34,7 +34,6 @@ jobs:
 
       - name: Unit tests
         run: npm test
-        continue-on-error: true  # pre-existing: requires kdna-core module resolution fix
 
       - name: Integration tests (headless VS Code)
         run: xvfb-run -a npm run test:integration

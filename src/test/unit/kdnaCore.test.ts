@@ -218,7 +218,7 @@ describe('kdna-core lintDomain', () => {
     assert.ok(result.errors.some((e: string) => e.includes('Missing required file')));
   });
 
-  it('should detect too many files', () => {
+  it('should allow asset-engineering entries beyond the original six JSON files', () => {
     const dataMap: Record<string, any> = {
       'KDNA_Core.json': {},
       'KDNA_Patterns.json': {},
@@ -226,10 +226,11 @@ describe('kdna-core lintDomain', () => {
       'KDNA_Cases.json': {},
       'KDNA_Reasoning.json': {},
       'KDNA_Evolution.json': {},
-      'extra.json': {},
+      'KDNA_CARD.json': {},
+      'reports/provenance-report.json': {},
     };
     const result = kdnaCore.lintDomain(dataMap);
-    assert.ok(result.errors.some((e: string) => e.includes('at most 6')));
+    assert.ok(!result.errors.some((e: string) => e.includes('at most 6')));
   });
 
   it('should pass a valid minimal domain', () => {
