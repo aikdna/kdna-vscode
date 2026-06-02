@@ -1,5 +1,7 @@
 # KDNA Protocol Tools for VS Code
 
+[![CI](https://github.com/aikdna/kdna-vscode/actions/workflows/ci.yml/badge.svg)](https://github.com/aikdna/kdna-vscode/actions/workflows/ci.yml) [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
+
 VS Code extension for validating, previewing, and managing KDNA developer source workspaces. Part of the [KDNA Protocol](https://github.com/aikdna/kdna) ecosystem — the open judgment protocol for AI systems.
 
 `.kdna` files are the canonical KDNA assets. This extension is a developer tool
