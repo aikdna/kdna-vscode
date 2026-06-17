@@ -1,8 +1,8 @@
-# KDNA Protocol Tools for VS Code
+# KDNA Core VS Code Extension
 
 [![CI](https://github.com/aikdna/kdna-vscode/actions/workflows/ci.yml/badge.svg)](https://github.com/aikdna/kdna-vscode/actions/workflows/ci.yml) [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 
-VS Code extension for validating, previewing, and managing KDNA developer source workspaces. Part of the [KDNA Protocol](https://github.com/aikdna/kdna) ecosystem — the open judgment protocol for AI systems.
+VS Code extension for validating, previewing, and managing KDNA developer source workspaces. Part of the official KDNA toolchain — the official KDNA judgment-asset format and runtime loading contract.
 
 `.kdna` files are the canonical KDNA assets. This extension is a developer tool
 for editing and diagnosing non-canonical dev source workspaces. It is not a
@@ -17,7 +17,7 @@ optional encryption, and provenance recording.
 
 ## What is KDNA?
 
-KDNA is an open judgment protocol for AI systems. It turns human-governed domain judgment into portable structural assets that AI agents can load, trace, verify, and evolve.
+KDNA Core is the official KDNA judgment-asset format and runtime loading contract. .kdna assets are created, inspected, protected, loaded, and consumed through the official KDNA toolchain.
 
 ## What this extension does
 
@@ -79,7 +79,7 @@ code --install-extension aikdna.kdna-vscode
 
 ## Related
 
-- [KDNA Protocol](https://github.com/aikdna/kdna) — Protocol specification
+- [KDNA Core](https://github.com/aikdna/kdna) — Official format specification
 - [KDNA CLI](https://github.com/aikdna/kdna-cli) — CLI runtime
 - [KDNA Studio Core](https://github.com/aikdna/kdna-studio-core) — Authoring kernel
 - [aikdna.com](https://aikdna.com) — Website
