@@ -1,7 +1,7 @@
 {
   "name": "kdna-vscode",
-  "displayName": "KDNA Protocol Tools",
-  "description": "Edit, validate, preview, and diagnose non-canonical KDNA dev source workspaces. Trusted .kdna creation belongs to Studio-compatible compilers.",
+  "displayName": "KDNA Developer Tools",
+  "description": "Edit, validate, preview, and diagnose non-canonical KDNA dev source workspaces. Formal .kdna asset creation belongs to the official KDNA Studio toolchain.",
   "version": "0.1.0",
   "publisher": "aikdna",
   "license": "Apache-2.0",
@@ -18,7 +18,10 @@
     "kdna",
     "ai-agent",
     "domain-judgment",
-    "judgment-protocol"
+    "judgment-asset",
+    "kdna-core",
+    "ai-agent-runtime",
+    "official-toolchain"
   ],
   "activationEvents": [
     "onLanguage:json",
@@ -127,7 +130,7 @@
     "package": "vsce package"
   },
   "dependencies": {
-    "@aikdna/kdna-core": "^0.7.2",
+    "@aikdna/kdna-core": "^0.9.1",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
     "jszip": "^3.10.1"
