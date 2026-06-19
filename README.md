@@ -23,9 +23,10 @@ KDNA Core is the official KDNA judgment-asset format and runtime loading contrac
 
 - **Validate** KDNA dev source files with real-time diagnostics
 - **Preview** dev source structure in an interactive webview panel
-- **Bundle/inspect** dev-only `.kdna` files through the CLI
+- **Bundle/inspect** dev-only files through the CLI
 - **Create** non-canonical dev source workspaces from built-in templates
 - **Diagnose** issues with banned term highlighting, ontology hovers, and cross-file checks
+- **Call** `kdna validate` and `kdna plan-load` for runtime diagnostics
 
 ## Quick Demo
 
@@ -47,6 +48,7 @@ code --install-extension aikdna.kdna-vscode
 | Bundle/Inspect | Beta | Create dev-only bundles and inspect `.kdna` assets through the CLI |
 | Create | Beta | Scaffold new dev source workspaces from templates |
 | Diagnostics | Beta | Banned term highlighting, ontology concept hovers, cross-file consistency checks |
+| Runtime Plan | Planned | Call `kdna plan-load` for local runtime diagnostics without implementing authorization locally |
 | Studio Project | Planned | Support for `studio.project.json` and Judgment Cards |
 | Multi-language | Planned | Locale-aware card editing |
 
@@ -58,7 +60,7 @@ code --install-extension aikdna.kdna-vscode
 | `KDNA: Bundle Dev Source` | Build a dev-only non-trusted `.kdna` bundle |
 | `KDNA: Unpack .kdna` | Developer-only extraction for inspection/debugging |
 | `KDNA: Preview Domain` | Open interactive source preview |
-| `KDNA: Install Domain` | Install a `.kdna` asset from the registry |
+| `KDNA: Install Domain` | Legacy command name; local install must use CLI/Core validation, not registry authorization |
 | `KDNA: Create Dev Source Workspace` | Scaffold a new dev source workspace from template |
 
 ## Supported File Types
@@ -75,7 +77,16 @@ code --install-extension aikdna.kdna-vscode
 ## Requirements
 
 - VS Code 1.85+
-- [`@aikdna/kdna-cli`](https://github.com/aikdna/kdna-cli) for validate, inspect, and dev-only bundle operations
+- [`@aikdna/kdna-cli`](https://github.com/aikdna/kdna-cli) for validate, inspect, `plan-load`, and dev-only bundle operations
+
+## Runtime Boundary
+
+This extension is a dev-source editor and diagnostics surface. It must not
+implement license, entitlement, crypto, SecretStore, LoadPlan, or runtime
+projection policy. Runtime truth comes from `aikdna/kdna`, `kdna-cli`, and
+conforming Core implementations.
+
+See [docs/ROLE.md](docs/ROLE.md).
 
 ## Related
 
