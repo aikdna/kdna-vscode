@@ -368,7 +368,8 @@ async function cmdCreate() {
     authoring: {
       created_by: 'manual-dev-source',
       authoring_tool: 'kdna-vscode',
-      human_lock_required: true,
+      human_lock_required: false,
+      human_lock_policy: 'optional_provenance',
       human_lock_count: 0,
       ai_assisted: false,
       human_confirmed: false,
