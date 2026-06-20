@@ -57,7 +57,7 @@ code --install-extension aikdna.kdna-vscode
 | Command | Description |
 |---------|-------------|
 | `KDNA: Validate Domain` | Validate the current dev source workspace |
-| `KDNA: Bundle Dev Source` | Build a dev-only non-trusted `.kdna` bundle |
+| `KDNA: Bundle Dev Source` | Build a dev-only diagnostic `.kdna` bundle |
 | `KDNA: Unpack .kdna` | Developer-only extraction for inspection/debugging |
 | `KDNA: Preview Domain` | Open interactive source preview |
 | `KDNA: Install Domain` | Legacy command name; local install must use CLI/Core validation, not registry authorization |

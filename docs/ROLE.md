@@ -24,8 +24,8 @@ authorization runtime, authoring authority, registry client, or marketplace.
 - Do not implement license or entitlement checks inside the extension.
 - Do not treat top-level `KDNA_Core.json` / `KDNA_Patterns.json` source trees as
   installed runtime assets.
-- Do not create trusted runtime `.kdna` exports. Trusted export belongs to KDNA
-  Studio or a Studio-compatible compiler.
+- Do not create release-reviewed `.kdna` exports. Reviewed export provenance
+  belongs to KDNA Studio or a Studio-compatible compiler.
 - Do not require a registry or marketplace for local `.kdna` loading.
 
 ## Runtime Diagnostics
