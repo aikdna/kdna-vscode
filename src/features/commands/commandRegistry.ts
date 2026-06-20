@@ -163,7 +163,7 @@ async function cmdPack(domainUri?: vscode.Uri) {
   const zipBuffer = await zip.generateAsync({ type: 'uint8array' });
   await vscode.workspace.fs.writeFile(outputUri, zipBuffer);
   vscode.window.showWarningMessage(
-    `KDNA: Bundled dev source to ${outputUri.fsPath}. This is not a trusted asset; use KDNA Studio compile/export for trusted .kdna creation.`,
+    `KDNA: Bundled dev source to ${outputUri.fsPath}. This is an experimental authoring bundle; use KDNA Studio export for publishable .kdna files.`,
   );
 }
 
@@ -468,7 +468,7 @@ async function cmdCreate() {
   const doc = await vscode.workspace.openTextDocument(vscode.Uri.joinPath(domainDir, 'kdna.json'));
   await vscode.window.showTextDocument(doc);
   vscode.window.showInformationMessage(
-    `KDNA: Created non-canonical dev source workspace "${name}". Use KDNA Studio to compile trusted .kdna assets.`,
+    `KDNA: Created non-canonical dev source workspace "${name}". Use KDNA Studio export to create publishable .kdna files.`,
   );
 }
 
