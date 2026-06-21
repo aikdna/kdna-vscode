@@ -2,29 +2,29 @@
 
 [![CI](https://github.com/aikdna/kdna-vscode/actions/workflows/ci.yml/badge.svg)](https://github.com/aikdna/kdna-vscode/actions/workflows/ci.yml) [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 
-VS Code extension for validating, previewing, and managing KDNA developer source workspaces. Part of the official KDNA toolchain — the official KDNA judgment-asset format and runtime loading contract.
+VS Code extension for validating, previewing, and managing KDNA project views.
+It is part of the KDNA toolchain for developers working with `.kdna` assets.
 
 `.kdna` files are the canonical KDNA assets. This extension is a developer tool
-for editing and diagnosing non-canonical dev source workspaces. It is not a
-canonical authoring authority. Trusted `.kdna` assets must be exported by KDNA
-Studio or a Studio-compatible compiler with authoring provenance and Human Lock
-evidence.
+for editing and diagnosing expanded project views. It is not the primary
+runtime loading path; packaged `.kdna` files should still be validated and
+plan-loaded through the KDNA CLI/Core toolchain.
 
-A `.kdna` asset is not created by writing JSON files. It is compiled by a
-Studio-compatible authoring pipeline that performs human confirmation,
-validation, canonicalization, identity generation, digest computation, signing,
-optional encryption, and provenance recording.
+A `.kdna` asset is created by an authoring pipeline that validates,
+canonicalizes, computes digests, records metadata, and exports a packaged
+runtime file.
 
 ## What is KDNA?
 
-KDNA Core is the official KDNA judgment-asset format and runtime loading contract. .kdna assets are created, inspected, protected, loaded, and consumed through the official KDNA toolchain.
+KDNA Core is the open `.kdna` judgment-asset file format, schemas, JS Core, and
+runtime loading contract.
 
 ## What this extension does
 
-- **Validate** KDNA dev source files with real-time diagnostics
-- **Preview** dev source structure in an interactive webview panel
+- **Validate** KDNA project-view files with real-time diagnostics
+- **Preview** project-view structure in an interactive webview panel
 - **Bundle/inspect** dev-only files through the CLI
-- **Create** non-canonical dev source workspaces from built-in templates
+- **Create** expanded project views from built-in templates
 - **Diagnose** issues with banned term highlighting, ontology hovers, and cross-file checks
 - **Call** `kdna validate` and `kdna plan-load` for runtime diagnostics
 
@@ -34,7 +34,7 @@ KDNA Core is the official KDNA judgment-asset format and runtime loading contrac
 # Install the extension
 code --install-extension aikdna.kdna-vscode
 
-# Open a KDNA dev source workspace
+# Open a KDNA project view
 # Use Cmd+Shift+P → "KDNA: Validate Domain"
 # View results in the Problems panel
 ```
@@ -43,25 +43,21 @@ code --install-extension aikdna.kdna-vscode
 
 | Feature | Status | Notes |
 |---------|:------:|-------|
-| Validate | Beta | Real-time diagnostics as you edit KDNA source JSON files |
+| Validate | Beta | Real-time diagnostics as you edit KDNA project-view files |
 | Preview | Beta | Webview panel showing rendered source structure |
 | Bundle/Inspect | Beta | Create dev-only bundles and inspect `.kdna` assets through the CLI |
-| Create | Beta | Scaffold new dev source workspaces from templates |
+| Create | Beta | Scaffold new project views from templates |
 | Diagnostics | Beta | Banned term highlighting, ontology concept hovers, cross-file consistency checks |
-| Runtime Plan | Planned | Call `kdna plan-load` for local runtime diagnostics without implementing authorization locally |
-| Studio Project | Planned | Support for `studio.project.json` and Judgment Cards |
-| Multi-language | Planned | Locale-aware card editing |
 
 ## Commands
 
 | Command | Description |
 |---------|-------------|
-| `KDNA: Validate Domain` | Validate the current dev source workspace |
-| `KDNA: Bundle Dev Source` | Build a dev-only diagnostic `.kdna` bundle |
+| `KDNA: Validate Domain` | Validate the current project view |
+| `KDNA: Bundle Dev Source` | Build a diagnostic `.kdna` bundle |
 | `KDNA: Unpack .kdna` | Developer-only extraction for inspection/debugging |
 | `KDNA: Preview Domain` | Open interactive source preview |
-| `KDNA: Install Domain` | Legacy command name; local install must use CLI/Core validation, not registry authorization |
-| `KDNA: Create Dev Source Workspace` | Scaffold a new dev source workspace from template |
+| `KDNA: Create Dev Source Workspace` | Scaffold a new project view from template |
 
 ## Supported File Types
 
@@ -81,7 +77,7 @@ code --install-extension aikdna.kdna-vscode
 
 ## Runtime Boundary
 
-This extension is a dev-source editor and diagnostics surface. It must not
+This extension is a project-view editor and diagnostics surface. It must not
 implement license, entitlement, crypto, SecretStore, LoadPlan, or runtime
 projection policy. Runtime truth comes from `aikdna/kdna`, `kdna-cli`, and
 conforming Core implementations.
