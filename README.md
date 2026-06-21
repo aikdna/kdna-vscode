@@ -45,7 +45,7 @@ code --install-extension aikdna.kdna-vscode
 |---------|:------:|-------|
 | Validate | Beta | Real-time diagnostics as you edit KDNA project-view files |
 | Preview | Beta | Webview panel showing rendered source structure |
-| Bundle/Inspect | Beta | Create dev-only bundles and inspect `.kdna` assets through the CLI |
+| Pack/Inspect | Beta | Create diagnostic `.kdna` bundles from project views and inspect `.kdna` assets through the CLI |
 | Create | Beta | Scaffold new project views from templates |
 | Diagnostics | Beta | Banned term highlighting, ontology concept hovers, cross-file consistency checks |
 
@@ -54,12 +54,13 @@ code --install-extension aikdna.kdna-vscode
 | Command | Description |
 |---------|-------------|
 | `KDNA: Validate Domain` | Validate the current project view |
-| `KDNA: Bundle Dev Source` | Build a diagnostic `.kdna` bundle |
+| `KDNA: Pack Project View` | Build a diagnostic `.kdna` bundle |
 | `KDNA: Unpack .kdna` | Developer-only extraction for inspection/debugging |
 | `KDNA: Preview Domain` | Open interactive source preview |
-| `KDNA: Create Dev Source Workspace` | Scaffold a new project view from template |
+| `KDNA: Open Local .kdna Asset` | Open a local packaged `.kdna` asset preview |
+| `KDNA: Create Project View` | Scaffold a new project view from template |
 
-## Supported File Types
+## Supported Project-View Files
 
 - `KDNA_Core.json` — Domain axioms, ontology, causal structure
 - `KDNA_Patterns.json` — Terminology rules, banned terms, self-checks
@@ -68,12 +69,12 @@ code --install-extension aikdna.kdna-vscode
 - `KDNA_Reasoning.json` — Reasoning chains
 - `KDNA_Evolution.json` — Capability stages and evolution path
 - `KDNA_Cluster.json` — Domain cluster manifests
-- `.kdna` — Canonical KDNA asset files
+- `.kdna` — Canonical packaged KDNA asset files
 
 ## Requirements
 
 - VS Code 1.85+
-- [`@aikdna/kdna-cli`](https://github.com/aikdna/kdna-cli) for validate, inspect, `plan-load`, and dev-only bundle operations
+- [`@aikdna/kdna-cli`](https://github.com/aikdna/kdna-cli) for validate, inspect, `plan-load`, and project-view pack/unpack operations
 
 ## Runtime Boundary
 

@@ -4,17 +4,17 @@ Status: Implementation Contract
 Normative: No
 Protocol Source of Truth: `aikdna/kdna`
 
-`kdna-vscode` is a developer-source editing and diagnostics tool. It is not an
+`kdna-vscode` is a project-view editing and diagnostics tool. It is not an
 authorization runtime, authoring authority, registry client, or marketplace.
 
 ## Responsibilities
 
-- Edit KDNA source JSON and Studio-compatible source workspaces.
+- Edit KDNA project-view JSON and Studio-compatible authoring workspaces.
 - Validate source structure and surface diagnostics while the user edits.
-- Preview source structure for development review.
+- Preview project-view structure for development review.
 - Call `kdna validate` for validation evidence.
 - Call `kdna plan-load` for runtime authorization diagnostics.
-- Make clear when a workspace is source material rather than a runtime
+- Make clear when a workspace is project-view material rather than a runtime
   distribution asset.
 
 ## Non-Responsibilities

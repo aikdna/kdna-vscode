@@ -1,7 +1,7 @@
 {
   "name": "kdna-vscode",
   "displayName": "KDNA Developer Tools",
-  "description": "Edit, validate, preview, and diagnose non-canonical KDNA dev source workspaces. Formal .kdna asset creation belongs to the official KDNA Studio toolchain.",
+  "description": "Edit, validate, preview, and diagnose expanded KDNA project views. Packaged .kdna files remain the runtime asset.",
   "version": "0.1.0",
   "publisher": "aikdna",
   "license": "Apache-2.0",
@@ -26,7 +26,11 @@
   "activationEvents": [
     "onLanguage:json",
     "onCommand:kdna.validate",
+    "onCommand:kdna.pack",
+    "onCommand:kdna.unpack",
     "onCommand:kdna.preview",
+    "onCommand:kdna.install",
+    "onCommand:kdna.create",
     "onView:kdna-domains"
   ],
   "main": "./dist/extension.js",
@@ -53,7 +57,7 @@
       },
       {
         "command": "kdna.pack",
-        "title": "KDNA: Bundle Dev Source"
+        "title": "KDNA: Pack Project View"
       },
       {
         "command": "kdna.unpack",
@@ -65,11 +69,11 @@
       },
       {
         "command": "kdna.install",
-        "title": "KDNA: Install Domain"
+        "title": "KDNA: Open Local .kdna Asset"
       },
       {
         "command": "kdna.create",
-        "title": "KDNA: Create Dev Source Workspace"
+        "title": "KDNA: Create Project View"
       }
     ],
     "views": {
@@ -84,7 +88,7 @@
     "viewsWelcome": [
       {
         "view": "kdna-domains",
-        "contents": "No KDNA dev source workspaces found in this workspace.\n[Create Dev Source Workspace](command:kdna.create)\n[Install .kdna Asset](command:kdna.install)"
+        "contents": "No expanded KDNA project views found in this workspace.\n[Create Project View](command:kdna.create)\n[Open Local .kdna Asset](command:kdna.install)"
       }
     ],
     "menus": {
@@ -114,7 +118,7 @@
           "default": 3,
           "minimum": 1,
           "maximum": 10,
-          "description": "Maximum directory depth to scan for KDNA domain directories. Increase for deep monorepo structures."
+          "description": "Maximum directory depth to scan for expanded KDNA project views. Increase for deep monorepo structures."
         }
       }
     }
@@ -130,7 +134,7 @@
     "package": "vsce package"
   },
   "dependencies": {
-    "@aikdna/kdna-core": "^0.9.1",
+    "@aikdna/kdna-core": "^0.12.3",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
     "jszip": "^3.10.1"

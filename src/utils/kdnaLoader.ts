@@ -10,7 +10,7 @@ import * as kdnaCore from '@aikdna/kdna-core';
 import { readDomainData, readJsonFile } from './kdnaFiles';
 
 /**
- * Load a KDNA dev source workspace using kdna-core's data-first API.
+ * Load an expanded KDNA project view using kdna-core's data-first API.
  */
 export async function loadDomainFromUri(
   domainDir: vscode.Uri,
@@ -58,7 +58,7 @@ async function readZipJson(zip: any, filename: string): Promise<any> {
 }
 
 /**
- * Lint a dev source workspace using kdna-core.
+ * Lint an expanded KDNA project view using kdna-core.
  */
 export async function lintDomainDir(domainDir: vscode.Uri): Promise<kdnaCore.LintResult> {
   const dataMap = await readDomainData(domainDir);
@@ -66,7 +66,7 @@ export async function lintDomainDir(domainDir: vscode.Uri): Promise<kdnaCore.Lin
 }
 
 /**
- * Validate a dev source workspace with JSON Schema using kdna-core.
+ * Validate an expanded KDNA project view with JSON Schema using kdna-core.
  */
 export async function validateDomainDir(
   domainDir: vscode.Uri,

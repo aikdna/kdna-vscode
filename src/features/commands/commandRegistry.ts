@@ -163,7 +163,7 @@ async function cmdPack(domainUri?: vscode.Uri) {
   const zipBuffer = await zip.generateAsync({ type: 'uint8array' });
   await vscode.workspace.fs.writeFile(outputUri, zipBuffer);
   vscode.window.showWarningMessage(
-    `KDNA: Bundled dev source to ${outputUri.fsPath}. This is an experimental authoring bundle; use KDNA Studio export for publishable .kdna files.`,
+    `KDNA: Packed project view to ${outputUri.fsPath}. This is a diagnostic authoring bundle; use KDNA Studio export for publishable .kdna files.`,
   );
 }
 
@@ -215,102 +215,29 @@ async function cmdPreview(uri?: vscode.Uri) {
   } else {
     const domainDir = (await isKdnaDomainDir(uri)) ? uri : await findDomainDir(uri);
     if (!domainDir) {
-      vscode.window.showErrorMessage('Not a KDNA dev source workspace.');
+      vscode.window.showErrorMessage('Not an expanded KDNA project view.');
       return;
     }
     PreviewPanel.createOrShow(domainDir, false);
   }
 }
 
-// ─── Install ─────────────────────────────────────────────────────────
+// ─── Open Local Asset ────────────────────────────────────────────────
 
 async function cmdInstall() {
   const channel = getOutputChannel();
   channel.clear();
-  channel.appendLine('KDNA: Fetching registry...');
+
+  const kdnaUri = await pickKdnaFile();
+  if (!kdnaUri) return;
 
   try {
-    const https = require('https');
-    const registryUrl = 'https://raw.githubusercontent.com/aikdna/kdna-registry/main/domains.json';
-
-    const domains = await new Promise<any[]>((resolve, reject) => {
-      https
-        .get(registryUrl, (res: any) => {
-          let data = '';
-          res.on('data', (chunk: string) => (data += chunk));
-          res.on('end', () => {
-            try {
-              const parsed = JSON.parse(data);
-              const list = Array.isArray(parsed) ? parsed : Array.isArray(parsed.domains) ? parsed.domains : [];
-              resolve(list);
-            } catch {
-              reject(new Error('Invalid registry response'));
-            }
-          });
-        })
-        .on('error', reject);
-    });
-
-    if (!domains.length) {
-      channel.appendLine('No domains found in registry.');
-      channel.show();
-      return;
-    }
-
-    const items = domains.map((d: any) => ({
-      label: d.id || d.name,
-      description: d.version ? `v${d.version}` : '',
-      detail: d.description || '',
-      domain: d,
-    }));
-
-    const picked = await vscode.window.showQuickPick(items, {
-      placeHolder: 'Select a domain to install',
-      matchOnDescription: true,
-    });
-    if (!picked) return;
-
-    channel.appendLine(`Installing ${picked.label}...`);
-
-    const homeKdna = vscode.Uri.joinPath(
-      vscode.Uri.file(process.env.HOME || process.env.USERPROFILE || '.'),
-      '.kdna',
-      'domains',
-      picked.label,
-    );
-
-    const downloadUrl = picked.domain.download_url || picked.domain.url;
-    if (!downloadUrl) {
-      channel.appendLine('Error: No download URL for this domain.');
-      channel.show();
-      return;
-    }
-
-    await vscode.workspace.fs.createDirectory(homeKdna);
-
-    // Download and unpack
-    const buffer = await new Promise<Uint8Array>((resolve, reject) => {
-      https
-        .get(downloadUrl, (res: any) => {
-          const chunks: Buffer[] = [];
-          res.on('data', (chunk: Buffer) => chunks.push(chunk));
-          res.on('end', () => resolve(Buffer.concat(chunks)));
-        })
-        .on('error', reject);
-    });
-
-    const zip = await JSZip.loadAsync(buffer);
-    for (const [filename, file] of Object.entries(zip.files)) {
-      if (file.dir) continue;
-      const content = await file.async('uint8array');
-      await vscode.workspace.fs.writeFile(vscode.Uri.joinPath(homeKdna, filename), content);
-    }
-
-    channel.appendLine(`✓ Installed ${picked.label} to ${homeKdna.fsPath}`);
-    vscode.window.showInformationMessage(`KDNA: Installed ${picked.label}`);
+    channel.appendLine(`KDNA: Opening local asset ${kdnaUri.fsPath}`);
+    PreviewPanel.createOrShow(kdnaUri, true);
+    vscode.window.showInformationMessage('KDNA: Opened local .kdna asset preview.');
   } catch (err: any) {
     channel.appendLine(`Error: ${err.message}`);
-    vscode.window.showErrorMessage(`KDNA: Install failed — ${err.message}`);
+    vscode.window.showErrorMessage(`KDNA: Could not open local .kdna asset — ${err.message}`);
   }
   channel.show();
 }
@@ -334,7 +261,7 @@ async function cmdCreate() {
     canSelectFolders: true,
     canSelectMany: false,
     defaultUri,
-    title: 'Select parent directory for new dev source workspace',
+    title: 'Select parent directory for new KDNA project view',
   });
   if (!targetUris?.length) return;
 
@@ -366,7 +293,7 @@ async function cmdCreate() {
     status: 'experimental',
     quality_badge: 'untested',
     authoring: {
-      created_by: 'manual-dev-source',
+      created_by: 'manual-project-view',
       authoring_tool: 'kdna-vscode',
       human_lock_required: false,
       human_lock_policy: 'optional_provenance',
@@ -374,7 +301,6 @@ async function cmdCreate() {
       ai_assisted: false,
       human_confirmed: false,
     },
-    registry: { repo: 'https://github.com/your-org/your-repo' },
     file_count: 2,
     files: ['KDNA_Core.json', 'KDNA_Patterns.json'],
   };
@@ -385,7 +311,7 @@ async function cmdCreate() {
       domain: name,
       created: today,
       purpose: 'Define the core cognition of this domain.',
-      load_condition: 'Always load when this domain is selected.',
+      load_condition: 'Load only when the packaged asset LoadPlan allows it.',
     },
     axioms: [
       {
@@ -424,7 +350,7 @@ async function cmdCreate() {
       domain: name,
       created: today,
       purpose: 'Define terminology, misunderstandings, and self-checks.',
-      load_condition: 'Always load when this domain is selected.',
+      load_condition: 'Load only when the packaged asset LoadPlan allows it.',
     },
     terminology: {
       standard_terms: [{ term: 'preferred term', definition: 'Operational definition.' }],
@@ -469,7 +395,7 @@ async function cmdCreate() {
   const doc = await vscode.workspace.openTextDocument(vscode.Uri.joinPath(domainDir, 'kdna.json'));
   await vscode.window.showTextDocument(doc);
   vscode.window.showInformationMessage(
-    `KDNA: Created non-canonical dev source workspace "${name}". Use KDNA Studio export to create publishable .kdna files.`,
+    `KDNA: Created expanded project view "${name}". Use KDNA Studio export to create publishable .kdna files.`,
   );
 }
 
