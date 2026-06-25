@@ -1,5 +1,13 @@
 # KDNA Core VS Code Extension
 
+> ⚠️ **No longer maintained as of 2026-06-25.** This extension was never
+> published to the VS Code Marketplace (the `aikdna.kdna-vscode` listing
+> returns 404). The repository is preserved for reference only.
+>
+> For current v1 workflows, use:
+> - [`@aikdna/kdna-cli`](https://github.com/aikdna/kdna-cli) for validate, plan-load, pack/unpack
+> - [`@aikdna/kdna-studio-cli`](https://github.com/aikdna/kdna-studio-cli) for authoring
+
 [![CI](https://github.com/aikdna/kdna-vscode/actions/workflows/ci.yml/badge.svg)](https://github.com/aikdna/kdna-vscode/actions/workflows/ci.yml) [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 
 VS Code extension for validating, previewing, and managing KDNA project views.
