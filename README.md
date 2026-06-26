@@ -1,4 +1,4 @@
-# KDNA Core VS Code Extension
+# KDNA Developer Tools (KDNA Core VS Code Extension)
 
 > ⚠️ **No longer maintained as of 2026-06-25.** This extension was never
 > published to the VS Code Marketplace (the `aikdna.kdna-vscode` listing
