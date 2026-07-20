@@ -3,9 +3,14 @@
 Status: Implementation Contract
 Normative: No
 Protocol Source of Truth: `aikdna/kdna`
+Repository Mission: Retained
+Current Maturity: Unassessed pending owner-reviewed recertification
 
 `kdna-vscode` is a project-view editing and diagnostics tool. It is not an
 authorization runtime, authoring authority, registry client, or marketplace.
+The current source predates the current Core coordinate, so this role describes
+the repository's responsibility rather than claiming that `0.1.0` is a current
+compatible release.
 
 ## Responsibilities
 
