@@ -22,7 +22,15 @@ export interface RuntimeCapsule {
   access: string;
   profile: string;
   context: Record<string, unknown>;
-  trace: Record<string, unknown>;
+  trace: Record<string, unknown> & {
+    projection_report?: RuntimeProjectionReport;
+  };
+}
+
+export interface RuntimeProjectionReport {
+  status: 'complete' | 'partial';
+  omitted: Array<{ path: string; count: number }>;
+  omitted_total: number;
 }
 
 export interface RuntimeAssetResult {
@@ -91,6 +99,9 @@ export function renderRuntimeAssetPreview(result: RuntimeAssetResult): string {
 
   const context = result.capsule.context;
   const highestQuestion = stringValue(context.highest_question);
+  const projectionReport = renderProjectionReport(
+    result.capsule.trace.projection_report,
+  );
   const sections = [
     ['Axioms', context.axioms],
     ['Boundaries', context.boundaries],
@@ -103,9 +114,24 @@ export function renderRuntimeAssetPreview(result: RuntimeAssetResult): string {
     <main>
       <h1>${escapeHtml(heading)}</h1>
       <p class="status ready">Loaded through ${escapeHtml(result.capsule.type)}@${escapeHtml(result.capsule.contract_version)}</p>
+      ${projectionReport}
       ${highestQuestion ? `<section><h2>Highest question</h2><p>${escapeHtml(highestQuestion)}</p></section>` : ''}
       ${sections}
     </main>`);
+}
+
+function renderProjectionReport(report: RuntimeProjectionReport | undefined): string {
+  if (!report) return '';
+  const omitted = Array.isArray(report.omitted)
+    ? report.omitted.map((entry) =>
+      `<li><code>${escapeHtml(entry.path)}</code> · ${escapeHtml(entry.count)} omitted</li>`,
+    ).join('')
+    : '';
+  return `<section class="projection-report">
+    <h2>Projection: ${escapeHtml(report.status)}</h2>
+    <p>${escapeHtml(report.omitted_total)} omitted values disclosed by KDNA Core.</p>
+    ${omitted ? `<ul>${omitted}</ul>` : ''}
+  </section>`;
 }
 
 function renderSection(label: string, value: unknown): string {

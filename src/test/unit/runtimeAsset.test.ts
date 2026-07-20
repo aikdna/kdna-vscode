@@ -38,7 +38,13 @@ describe('Runtime Capsule adapter', () => {
           highest_question: '<script>alert(1)</script>',
           axioms: [{ statement: 'Prefer reversible changes.' }],
         },
-        trace: {},
+        trace: {
+          projection_report: {
+            status: 'partial',
+            omitted: [{ path: '/core/ontology', count: 2 }],
+            omitted_total: 2,
+          },
+        },
       },
     };
 
@@ -47,6 +53,9 @@ describe('Runtime Capsule adapter', () => {
     assert.match(html, /Prefer reversible changes/);
     assert.doesNotMatch(html, /<script>alert/);
     assert.match(html, /&lt;script&gt;/);
+    assert.match(html, /Projection: partial/);
+    assert.match(html, /2 omitted values disclosed/);
+    assert.match(html, /\/core\/ontology/);
   });
 
   it('renders LoadPlan denial without reading payload content', () => {
