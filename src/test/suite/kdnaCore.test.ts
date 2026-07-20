@@ -4,10 +4,8 @@
  */
 
 import * as assert from 'assert';
-import * as vscode from 'vscode';
-import * as path from 'path';
-import * as fs from 'fs';
 import * as kdnaCore from '@aikdna/kdna-core';
+import { diagnoseProjectViewData } from '../../utils/projectViewDiagnostics';
 
 suite('kdna-core Integration', () => {
   test('kdna-core module should be loadable', () => {
@@ -18,7 +16,6 @@ suite('kdna-core Integration', () => {
     assert.ok(typeof kdnaCore.loadDomainFromFiles === 'function', 'loadDomainFromFiles should be a function');
     assert.ok(typeof kdnaCore.classifyInput === 'function', 'classifyInput should be a function');
     assert.ok(typeof kdnaCore.formatContext === 'function', 'formatContext should be a function');
-    assert.ok(typeof kdnaCore.lintDomain === 'function', 'lintDomain should be a function');
     assert.ok(typeof kdnaCore.validateDomainSchema === 'function', 'validateDomainSchema should be a function');
     assert.ok(typeof kdnaCore.validateCrossFile === 'function', 'validateCrossFile should be a function');
     assert.ok(typeof kdnaCore.renderPreviewHTML === 'function', 'renderPreviewHTML should be a function');
@@ -92,7 +89,7 @@ suite('kdna-core Integration', () => {
   });
 
   test('lintDomain should detect missing required fields', () => {
-    const result = kdnaCore.lintDomain({} as any);
+    const result = diagnoseProjectViewData({});
     assert.ok(result.errors.length > 0, 'Should have errors for empty data');
     assert.ok(result.errors.some((e: string) => e.includes('Missing required file')), 'Should report missing files');
   });
@@ -115,7 +112,7 @@ suite('kdna-core Integration', () => {
       },
     };
 
-    const result = kdnaCore.lintDomain(dataMap as any);
+    const result = diagnoseProjectViewData(dataMap);
     assert.ok(result.errors.length === 0, `Should have no errors, got: ${result.errors.join(', ')}`);
   });
 

@@ -3,26 +3,17 @@
  */
 
 import * as vscode from 'vscode';
-import * as path from 'path';
-import * as JSZip from 'jszip';
+import * as kdnaCore from '@aikdna/kdna-core';
 import { COMMANDS } from '../../constants';
 import {
   findDomainDirs,
   findDomainDir,
   isKdnaPackageFile,
-  readDomainData,
-  readJsonFile,
   isKdnaDomainDir,
   isKdnaFile,
   getDomainInfo,
 } from '../../utils/kdnaFiles';
-import {
-  lintDomainDir,
-  validateDomainDir,
-  renderDomainPreview,
-  renderKdnaPreview,
-} from '../../utils/kdnaLoader';
-import { DomainTreeProvider } from '../treeView/domainTreeProvider';
+import { validateDomainDir } from '../../utils/kdnaLoader';
 import { PreviewPanel } from '../webview/previewPanel';
 
 let outputChannel: vscode.OutputChannel;
@@ -149,22 +140,18 @@ async function cmdPack(domainUri?: vscode.Uri) {
   });
   if (!outputUri) return;
 
-  const zip = new (JSZip as any)();
-  const entries = await vscode.workspace.fs.readDirectory(domainUri);
-
-  for (const [entryName, type] of entries) {
-    if (type !== vscode.FileType.File) continue;
-    if (!entryName.endsWith('.json')) continue;
-    const fileUri = vscode.Uri.joinPath(domainUri, entryName);
-    const content = await vscode.workspace.fs.readFile(fileUri);
-    zip.file(entryName, content);
+  if (domainUri.scheme !== 'file' || outputUri.scheme !== 'file') {
+    vscode.window.showErrorMessage('KDNA: Core packing currently requires local filesystem paths.');
+    return;
   }
-
-  const zipBuffer = await zip.generateAsync({ type: 'uint8array' });
-  await vscode.workspace.fs.writeFile(outputUri, zipBuffer);
-  vscode.window.showWarningMessage(
-    `KDNA: Packed project view to ${outputUri.fsPath}. This is a diagnostic authoring bundle; use KDNA Studio export for publishable .kdna files.`,
-  );
+  try {
+    kdnaCore.pack(domainUri.fsPath, outputUri.fsPath);
+    vscode.window.showInformationMessage(`KDNA: Packed canonical asset to ${outputUri.fsPath}.`);
+  } catch (error: any) {
+    vscode.window.showErrorMessage(
+      `KDNA: Core rejected this project view — ${error.message}. Use KDNA Studio export for authoring projects.`,
+    );
+  }
 }
 
 // ─── Unpack ──────────────────────────────────────────────────────────
@@ -173,7 +160,6 @@ async function cmdUnpack(kdnaUri?: vscode.Uri) {
   if (!kdnaUri) kdnaUri = (await pickKdnaFile()) || undefined;
   if (!kdnaUri) return;
 
-  const info = await getDomainInfo(vscode.Uri.joinPath(kdnaUri, '..'));
   const defaultName = kdnaUri.path.split('/').pop()?.replace('.kdna', '') || 'domain';
 
   const targetUris = await vscode.window.showOpenDialog({
@@ -186,19 +172,16 @@ async function cmdUnpack(kdnaUri?: vscode.Uri) {
 
   const outputDir = vscode.Uri.joinPath(targetUris[0], defaultName);
 
-  const content = await vscode.workspace.fs.readFile(kdnaUri);
-  const zip = await JSZip.loadAsync(content);
-
-  await vscode.workspace.fs.createDirectory(outputDir);
-
-  for (const [filename, file] of Object.entries(zip.files)) {
-    if (file.dir) continue;
-    const fileContent = await file.async('uint8array');
-    const fileUri = vscode.Uri.joinPath(outputDir, filename);
-    await vscode.workspace.fs.writeFile(fileUri, fileContent);
+  if (kdnaUri.scheme !== 'file' || outputDir.scheme !== 'file') {
+    vscode.window.showErrorMessage('KDNA: Core unpacking currently requires local filesystem paths.');
+    return;
   }
-
-  vscode.window.showInformationMessage(`KDNA: Unpacked to ${outputDir.fsPath}`);
+  try {
+    kdnaCore.unpack(kdnaUri.fsPath, outputDir.fsPath);
+    vscode.window.showInformationMessage(`KDNA: Unpacked through Core to ${outputDir.fsPath}`);
+  } catch (error: any) {
+    vscode.window.showErrorMessage(`KDNA: Core rejected this asset — ${error.message}`);
+  }
 }
 
 // ─── Preview ─────────────────────────────────────────────────────────

@@ -3,7 +3,7 @@
  */
 
 import * as vscode from 'vscode';
-import { KDNA_REQUIRED_FILES, KDNA_ALL_FILES } from '../constants';
+import { KDNA_ALL_FILES } from '../constants';
 
 /**
  * Check if a directory is an expanded KDNA project view.

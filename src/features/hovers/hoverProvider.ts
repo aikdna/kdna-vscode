@@ -4,7 +4,7 @@
 
 import * as vscode from 'vscode';
 import { KDNA_FILE_PATTERN } from '../../constants';
-import { readDomainData, findDomainDir, readJsonFile } from '../../utils/kdnaFiles';
+import { findDomainDir, readJsonFile } from '../../utils/kdnaFiles';
 
 export class KdnaHoverProvider extends vscode.Disposable {
   private provider: vscode.Disposable;
