@@ -59,6 +59,25 @@ npm ci
 npm test
 ```
 
+## Installing from a .vsix package
+
+The extension is not published to the VS Code Marketplace. Pre-built packages
+are committed in this repository (`kdna-vscode-0.1.0.vsix`,
+`kdna-vscode-0.2.0.vsix`).
+
+From the command line:
+
+```bash
+code --install-extension kdna-vscode-0.2.0.vsix
+```
+
+Or via the UI: Extensions view → `···` menu → **Install from VSIX...** →
+select the `.vsix` file.
+
+Marketplace publication status is unchanged: there is no current Marketplace
+release. The `.vsix` files are locally built candidates, not owner-approved
+adapter releases, and remain subject to the release boundary above.
+
 ## License
 
 Apache-2.0 — see [LICENSE](LICENSE).
