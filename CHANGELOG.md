@@ -7,7 +7,7 @@
 - Remove direct ZIP/payload consumption and the unused JSZip runtime
   dependency.
 - Bind the unpublished extension candidate to the exact local KDNA Core
-  `0.21.0` candidate at `f13390916c0b6a71aed8a62c458b5c440985ad98`;
+  `0.21.0` candidate at `3676ab0e4b54b83c4193eef3519b19cc6d0cd245`;
   the candidate tar is excluded from VSIX output.
 - Surface Core's compact-projection omission status, paths, and counts in the
   editor preview instead of hiding a partial projection.
