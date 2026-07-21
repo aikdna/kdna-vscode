@@ -3,7 +3,7 @@
  */
 
 import * as vscode from 'vscode';
-import { findDomainDirs, getDomainInfo, readJsonFile, isKdnaDomainDir } from '../../utils/kdnaFiles';
+import { findDomainDirs, getDomainInfo, readJsonFile } from '../../utils/kdnaFiles';
 import { KDNA_ALL_FILES } from '../../constants';
 
 export class DomainTreeProvider implements vscode.TreeDataProvider<KDNATreeItem> {
@@ -49,7 +49,7 @@ export class DomainTreeProvider implements vscode.TreeDataProvider<KDNATreeItem>
     for (const filename of KDNA_ALL_FILES) {
       const fileUri = vscode.Uri.joinPath(domain.domainDir, filename);
       try {
-        const stat = await vscode.workspace.fs.stat(fileUri);
+        await vscode.workspace.fs.stat(fileUri);
         const data = await readJsonFile<any>(fileUri);
         const summary = data ? this.getFileSummary(filename, data) : '';
         items.push(new FileItem(fileUri, filename, summary));
@@ -164,7 +164,7 @@ export class SectionItem extends KDNATreeItem {
   constructor(
     name: string,
     count: number,
-    fileUri: vscode.Uri,
+    _fileUri: vscode.Uri,
   ) {
     super(`${name} (${count})`, vscode.TreeItemCollapsibleState.None);
     this.iconPath = new vscode.ThemeIcon('symbol-field');

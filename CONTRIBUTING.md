@@ -21,7 +21,7 @@ npm test
 
 ## Extension Features
 
-- **Validation**: Real-time `kdna dev validate` feedback in the editor
+- **Validation**: Real-time `kdna validate` feedback in the editor
 - **Preview**: Render judgment cards and axiom trees inline
 - **Pack**: Package .kdna files from the editor sidebar
 - **IntelliSense**: Schema-aware autocomplete for KDNA JSON files

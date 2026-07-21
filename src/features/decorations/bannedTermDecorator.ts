@@ -3,7 +3,6 @@
  */
 
 import * as vscode from 'vscode';
-import { KDNA_FILE_PATTERN } from '../../constants';
 import { findDomainDir, readJsonFile } from '../../utils/kdnaFiles';
 
 export class BannedTermDecorator extends vscode.Disposable {

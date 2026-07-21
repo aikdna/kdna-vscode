@@ -6,8 +6,8 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 import * as path from 'path';
-import * as fs from 'fs';
 import * as kdnaCore from '@aikdna/kdna-core';
+import { diagnoseProjectViewData } from '../../utils/projectViewDiagnostics';
 
 suite('Domain Loader Bridge', () => {
   let tmpDir: vscode.Uri;
@@ -88,10 +88,6 @@ suite('Domain Loader Bridge', () => {
   });
 
   test('should lint domain without errors', () => {
-    const dataMap: Record<string, any> = {};
-    // Re-read files for fresh dataMap
-    // Actually, we'll just check that lint works with the fixture
-
     // Create inline dataMap matching our test domain
     const testMap = {
       'KDNA_Core.json': {
@@ -110,7 +106,7 @@ suite('Domain Loader Bridge', () => {
       },
     };
 
-    const result = kdnaCore.lintDomain(testMap as any);
+    const result = diagnoseProjectViewData(testMap);
     assert.strictEqual(result.errors.length, 0, `Unexpected errors: ${result.errors.join('; ')}`);
   });
 

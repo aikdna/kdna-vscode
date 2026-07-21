@@ -1,19 +1,20 @@
 # KDNA Developer Tools for VS Code
 
-> **Status:** editor-integration mission retained; current maturity and exact
-> KDNA Core compatibility are unassessed. This repository is source-only and
-> has no currently approved Marketplace release.
+> **Status:** editor-integration mission retained. The source-only corrective
+> candidate is bound to exact KDNA Core commit
+> `3676ab0e4b54b83c4193eef3519b19cc6d0cd245`; no Marketplace release or
+> compatibility approval has been granted.
 
 This repository owns KDNA's editor integration: helping a developer make
 judgment material explicit, inspect and diagnose it while editing, and invoke
 the official creation and consumption contracts without teaching the editor a
 parallel KDNA format.
 
-The checked-in `0.1.0` source predates the current CBOR payload and Runtime
-Capsule contracts and depends on an older `@aikdna/kdna-core` coordinate. It
-must be independently recertified against exact current protocol and CLI
-versions before a release can be proposed. That limitation blocks the current
-source from a release wave; it does not cancel the repository's mission.
+The local `0.2.0` corrective candidate routes packaged assets through the
+current CBOR, LoadPlan, and Runtime Capsule contracts. Its expanded project
+view remains an editor-side authoring surface, not a parallel runtime format.
+The exact candidate still requires final ecosystem validation and owner
+approval before a release can be proposed.
 
 ## Mission
 
@@ -27,7 +28,8 @@ source from a release wave; it does not cancel the repository's mission.
 ## Current release boundary
 
 - No current Marketplace publication or compatibility claim exists.
-- The current source is not an approved adapter for a current KDNA release.
+- The current source is a locally verified candidate, not an owner-approved
+  adapter release.
 - Old direct ZIP/project-view operations are historical implementation debt,
   not protocol authority and not a pattern for new integrations.
 - A future release requires an owner-reviewed fact card, exact Core/CLI pins,
@@ -49,13 +51,32 @@ See [docs/ROLE.md](docs/ROLE.md) for the detailed responsibility boundary.
 
 ## Development
 
-The source is retained for recertification work. Do not interpret a local
-build as compatibility or release evidence.
+The source is under exact-coordinate recertification. A local green build is
+candidate evidence, not release approval.
 
 ```bash
 npm ci
 npm test
 ```
+
+## Installing from a .vsix package
+
+The extension is not published to the VS Code Marketplace. Pre-built packages
+are committed in this repository (`kdna-vscode-0.1.0.vsix`,
+`kdna-vscode-0.2.0.vsix`).
+
+From the command line:
+
+```bash
+code --install-extension kdna-vscode-0.2.0.vsix
+```
+
+Or via the UI: Extensions view → `···` menu → **Install from VSIX...** →
+select the `.vsix` file.
+
+Marketplace publication status is unchanged: there is no current Marketplace
+release. The `.vsix` files are locally built candidates, not owner-approved
+adapter releases, and remain subject to the release boundary above.
 
 ## License
 

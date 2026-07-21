@@ -3,7 +3,8 @@ name: Publish kdna-vscode
 on:
   push:
     tags:
-      - 'v*'
+      - 'kdna-vscode-v*'
+  workflow_dispatch:
 
 
 jobs:

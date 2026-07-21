@@ -2,7 +2,7 @@
   "name": "kdna-vscode",
   "displayName": "KDNA Developer Tools",
   "description": "Edit, validate, preview, and diagnose expanded KDNA project views. Packaged .kdna files remain the runtime asset.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "aikdna",
   "license": "Apache-2.0",
   "icon": "media/kdna-icon.png",
@@ -134,18 +134,20 @@
     "package": "vsce package"
   },
   "dependencies": {
-    "@aikdna/kdna-core": "^0.12.3",
+    "@aikdna/kdna-core": "0.21.0",
     "ajv": "^8.17.1",
-    "ajv-formats": "^3.0.1",
-    "jszip": "^3.10.1"
+    "ajv-formats": "^3.0.1"
   },
   "devDependencies": {
     "@types/glob": "^8.1.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "^20.0.0",
     "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
     "@vscode/test-electron": "^2.3.0",
     "@vscode/vsce": "^3.0.0",
+    "eslint": "^8.57.0",
     "glob": "^13.0.6",
     "mocha": "^11.7.6",
     "ts-loader": "^9.5.0",

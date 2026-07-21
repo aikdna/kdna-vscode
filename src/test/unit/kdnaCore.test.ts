@@ -8,6 +8,7 @@
 
 import * as assert from 'node:assert';
 import { describe, it } from 'node:test';
+import { diagnoseProjectViewData } from '../../utils/projectViewDiagnostics';
 
 // Dynamic require since this is a CJS module and we're in ESM-ish context
 const kdnaCore = require('@aikdna/kdna-core');
@@ -211,9 +212,9 @@ describe('kdna-core formatContext', () => {
   });
 });
 
-describe('kdna-core lintDomain', () => {
+describe('expanded project-view diagnostics', () => {
   it('should detect missing required files', () => {
-    const result = kdnaCore.lintDomain({});
+    const result = diagnoseProjectViewData({});
     assert.ok(result.errors.length > 0);
     assert.ok(result.errors.some((e: string) => e.includes('Missing required file')));
   });
@@ -229,7 +230,8 @@ describe('kdna-core lintDomain', () => {
       'KDNA_CARD.json': {},
       'reports/provenance-report.json': {},
     };
-    const result = kdnaCore.lintDomain(dataMap);
+    const result = diagnoseProjectViewData(dataMap);
+    assert.strictEqual(result.warnings.length, 0);
     assert.ok(!result.errors.some((e: string) => e.includes('at most 6')));
   });
 
@@ -251,7 +253,7 @@ describe('kdna-core lintDomain', () => {
       },
     };
 
-    const result = kdnaCore.lintDomain(dataMap);
+    const result = diagnoseProjectViewData(dataMap);
     assert.strictEqual(result.errors.length, 0, `Unexpected errors: ${result.errors.join(', ')}`);
   });
 
@@ -273,7 +275,7 @@ describe('kdna-core lintDomain', () => {
       },
     };
 
-    const result = kdnaCore.lintDomain(dataMap);
+    const result = diagnoseProjectViewData(dataMap);
     assert.ok(result.errors.length > 0, 'Should detect missing axiom fields');
     assert.ok(result.errors.some((e: string) => e.includes('one_sentence')));
   });
@@ -296,7 +298,6 @@ describe('kdna-core lintDomain', () => {
       },
     };
 
-    const result = kdnaCore.lintDomain(dataMap);
     // Should NOT warn because it ends with "?" (which is accepted)
     // Use a statement that doesn't start with a yes/no word
     const dataMap2 = {
@@ -307,7 +308,7 @@ describe('kdna-core lintDomain', () => {
       },
     };
 
-    const result2 = kdnaCore.lintDomain(dataMap2);
+    const result2 = diagnoseProjectViewData(dataMap2);
     assert.ok(result2.warnings.some((w: string) => w.includes('yes/no')), 'Should warn about non yes/no check');
   });
 });
