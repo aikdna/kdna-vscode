@@ -1,13 +1,22 @@
 {
   "name": "kdna-vscode",
   "displayName": "KDNA Developer Tools",
-  "description": "Edit, validate, preview, and diagnose expanded KDNA project views. Packaged .kdna files remain the runtime asset.",
+  "description": "Edit and diagnose KDNA project views, inspect explicit assets, and manage visible approved workspace attachments through the official CLI.",
   "version": "0.2.0",
   "publisher": "aikdna",
   "license": "Apache-2.0",
   "icon": "media/kdna-icon.png",
   "engines": {
     "vscode": "^1.85.0"
+  },
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "Workspace attachment controls execute an explicitly configured local CLI and remain disabled until the workspace is trusted.",
+      "restrictedConfigurations": [
+        "kdna.workspaceCliEntry"
+      ]
+    }
   },
   "categories": [
     "Programming Languages",
@@ -31,6 +40,9 @@
     "onCommand:kdna.preview",
     "onCommand:kdna.install",
     "onCommand:kdna.create",
+    "onCommand:kdna.workspaceStatus",
+    "onCommand:kdna.workspaceAttach",
+    "workspaceContains:.kdna/attachments.json",
     "onView:kdna-domains"
   ],
   "main": "./dist/extension.js",
@@ -74,6 +86,14 @@
       {
         "command": "kdna.create",
         "title": "KDNA: Create Project View"
+      },
+      {
+        "command": "kdna.workspaceStatus",
+        "title": "KDNA: Workspace Attachments"
+      },
+      {
+        "command": "kdna.workspaceAttach",
+        "title": "KDNA: Attach File to Workspace"
       }
     ],
     "views": {
@@ -92,6 +112,16 @@
       }
     ],
     "menus": {
+      "commandPalette": [
+        {
+          "command": "kdna.workspaceStatus",
+          "when": "isWorkspaceTrusted"
+        },
+        {
+          "command": "kdna.workspaceAttach",
+          "when": "isWorkspaceTrusted"
+        }
+      ],
       "explorer/context": [
         {
           "when": "resourceFilename == kdna.json || resourceExtname == .kdna",
@@ -119,6 +149,12 @@
           "minimum": 1,
           "maximum": 10,
           "description": "Maximum directory depth to scan for expanded KDNA project views. Increase for deep monorepo structures."
+        },
+        "kdna.workspaceCliEntry": {
+          "type": "string",
+          "default": "",
+          "scope": "resource",
+          "description": "Absolute path to the exact @aikdna/kdna-cli 0.36.0 src/cli.js entry used for workspace attachment status and controls. Empty disables the candidate workspace integration."
         }
       }
     }

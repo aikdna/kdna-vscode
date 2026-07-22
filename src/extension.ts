@@ -9,6 +9,7 @@ import { registerCommands } from './features/commands/commandRegistry';
 import { KdnaHoverProvider } from './features/hovers/hoverProvider';
 import { BannedTermDecorator } from './features/decorations/bannedTermDecorator';
 import { StatusBarController } from './features/statusBar/statusBarController';
+import { WorkspaceAttachmentController } from './features/workspace/workspaceAttachmentController';
 import { KDNA_FILE_PATTERN, KDNA_MANIFEST_PATTERN } from './constants';
 
 export function activate(context: vscode.ExtensionContext) {
@@ -33,6 +34,11 @@ export function activate(context: vscode.ExtensionContext) {
 
   // Status Bar
   context.subscriptions.push(new StatusBarController());
+
+  // Approved workspace attachment status and controls. This controller calls
+  // the exact configured CLI; it never reads, parses, or mutates the persistent
+  // record itself.
+  context.subscriptions.push(new WorkspaceAttachmentController());
 
   // File watchers for tree refresh
   const kdnaWatcher = vscode.workspace.createFileSystemWatcher(KDNA_FILE_PATTERN);

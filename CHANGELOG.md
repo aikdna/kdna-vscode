@@ -14,6 +14,19 @@
 - Keep source-project diagnostics separate from packaged Runtime validation,
   escape preview rendering, and add compile, lint, and unit coverage for
   blocked LoadPlans and Capsule delivery.
+- Add a workspace-scoped status and control surface that delegates only to an
+  explicitly configured exact CLI 0.36.0 entry. It shows identity,
+  version, digest, role, scope, and enabled state without reading or parsing
+  `.kdna/attachments.json` directly.
+- Provide explicit disable/enable, switch, offline rollback, relation-only
+  remove, and attach entry points. Attach and switch retain the CLI's native
+  exact preview and positive terminal confirmation; destructive-looking
+  controls use confirmation or an immediate undo action.
+- Keep multi-root workspaces separate and fail closed when the CLI is absent,
+  incompatible, produces an extended record, or rejects the request. No PATH
+  discovery, global asset scan, password input, or entitlement claim is added.
+- Declare the CLI setting as trust-sensitive and keep attachment commands and
+  process execution disabled in VS Code Restricted Mode.
 
 This is an unpublished Development Preview candidate. No Marketplace package
 or existing release is changed.

@@ -21,16 +21,50 @@ approval before a release can be proposed.
 - Edit KDNA project-view JSON and Studio-compatible authoring workspaces.
 - Surface source structure, scope and boundary diagnostics during editing.
 - Invoke the official Studio path when a user creates or exports an asset.
-- Invoke `kdna validate` and `kdna plan-load` for runtime diagnostics.
-- Present an authorized Runtime Capsule through the official CLI/Core loading
-  contract instead of decoding a `.kdna` container directly.
+- Use Core's official inspect, LoadPlan, and Runtime Capsule contracts for one
+  explicitly opened `.kdna` file.
+- Use the exact configured CLI for approved workspace attachment status and
+  controls instead of reading or rewriting `.kdna/attachments.json`.
+
+## Workspace attachment source candidate
+
+The current source adds a visible, workspace-scoped control surface. It requires
+an explicit resource setting pointing to the exact CLI 0.36.0 entry:
+
+```json
+{
+  "kdna.workspaceCliEntry": "/absolute/path/to/@aikdna/kdna-cli/src/cli.js"
+}
+```
+
+CLI 0.36.0 is not yet published. This setting is for coordinated source
+acceptance only; an empty setting leaves workspace controls disabled rather
+than falling back to another CLI or scanning `PATH`.
+
+Workspace attachment controls are also disabled in VS Code Restricted Mode.
+The CLI setting is declared trust-sensitive, and no configured executable is
+resolved or launched until VS Code reports that the workspace is trusted.
+
+The status bar shows the active workspace's approved identity/version or a
+clear none/disabled/error state. `KDNA: Workspace Attachments` displays exact
+digest, role, scope, and enabled state, then offers disable/enable, switch,
+offline rollback, and relation-only remove. Disable offers an immediate Enable
+action; rollback and remove require confirmation. Attach and switch run the
+official CLI in an interactive terminal so its exact preview and `y/N`
+confirmation remain authoritative.
+
+Multi-root workspaces are never merged. The user chooses a workspace when none
+is active, and each operation passes that one root to the CLI. The extension
+does not scan a global asset directory, read or parse
+`.kdna/attachments.json` directly, accept passwords, infer entitlement, or
+mutate snapshots itself. It validates the exact CLI's bounded status JSON.
 
 ## Current release boundary
 
 - No current Marketplace publication or compatibility claim exists.
 - The current source is a locally verified candidate, not an owner-approved
   adapter release.
-- Old direct ZIP/project-view operations are historical implementation debt,
+- Old direct project-view operations are historical implementation debt,
   not protocol authority and not a pattern for new integrations.
 - A future release requires an owner-reviewed fact card, exact Core/CLI pins,
   contract tests and normal release approval. No tag or release automation is
