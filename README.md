@@ -1,8 +1,8 @@
 # KDNA Developer Tools for VS Code
 
 > **Status:** editor-integration mission retained. The source-only corrective
-> candidate is bound to exact KDNA Core commit
-> `3676ab0e4b54b83c4193eef3519b19cc6d0cd245`; no Marketplace release or
+> candidate is bound to exact merged KDNA Core commit
+> `76bbc587ce05f7e575c2373832cc5c9eee9df98a`; no Marketplace release or
 > compatibility approval has been granted.
 
 This repository owns KDNA's editor integration: helping a developer make
@@ -61,9 +61,13 @@ npm test
 
 ## Installing from a .vsix package
 
-The extension is not published to the VS Code Marketplace. Pre-built packages
-are committed in this repository (`kdna-vscode-0.1.0.vsix`,
-`kdna-vscode-0.2.0.vsix`).
+The extension is not published to the VS Code Marketplace. Build a local
+candidate from the checked-out source before installing it:
+
+```bash
+npm ci
+npm run package
+```
 
 From the command line:
 
@@ -75,8 +79,8 @@ Or via the UI: Extensions view → `···` menu → **Install from VSIX...** �
 select the `.vsix` file.
 
 Marketplace publication status is unchanged: there is no current Marketplace
-release. The `.vsix` files are locally built candidates, not owner-approved
-adapter releases, and remain subject to the release boundary above.
+release. Any `.vsix` file built here is a local candidate, not an owner-approved
+adapter release, and remains subject to the release boundary above.
 
 ## License
 
