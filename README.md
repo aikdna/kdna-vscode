@@ -61,8 +61,10 @@ mutate snapshots itself. It validates the exact CLI's bounded status JSON.
 
 ## Current release boundary
 
-- No current Marketplace publication or compatibility claim exists.
-- The current source is a locally verified candidate, not an owner-approved
+- Marketplace currently carries the historical `0.1.0` incumbent. The current
+  `0.2.0` source and its expanded workspace contract have not been published
+  and do not inherit a compatibility claim from that older extension.
+- The current `0.2.0` source is a verified candidate, not an owner-approved
   adapter release.
 - Old direct project-view operations are historical implementation debt,
   not protocol authority and not a pattern for new integrations.
@@ -95,8 +97,8 @@ npm test
 
 ## Installing from a .vsix package
 
-The extension is not published to the VS Code Marketplace. Build a local
-candidate from the checked-out source before installing it:
+The current `0.2.0` extension is not published to the VS Code Marketplace.
+Build a local candidate from the checked-out source before installing it:
 
 ```bash
 npm ci
@@ -112,9 +114,10 @@ code --install-extension kdna-vscode-0.2.0.vsix
 Or via the UI: Extensions view → `···` menu → **Install from VSIX...** →
 select the `.vsix` file.
 
-Marketplace publication status is unchanged: there is no current Marketplace
-release. Any `.vsix` file built here is a local candidate, not an owner-approved
-adapter release, and remains subject to the release boundary above.
+Marketplace publication status is unchanged: `0.1.0` remains the published
+incumbent and `0.2.0` remains unpublished. Any `.vsix` file built here is a
+local candidate, not an owner-approved adapter release, and remains subject to
+the release boundary above.
 
 ## License
 
