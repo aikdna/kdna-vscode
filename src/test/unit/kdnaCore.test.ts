@@ -43,8 +43,8 @@ describe('kdna-core loader', () => {
   });
 
   it('should return null for null data', () => {
-    assert.strictEqual(kdnaCore.loadCorePatternsFromData(null, null), null);
-    assert.strictEqual(kdnaCore.loadCorePatternsFromData(null, {}), null);
+    assert.strictEqual(kdnaCore.loadCorePatternsFromData(null as any, null as any), null);
+    assert.strictEqual(kdnaCore.loadCorePatternsFromData(null as any, {} as any), null);
   });
 
   it('should load domain from data map with minimum mode', () => {
