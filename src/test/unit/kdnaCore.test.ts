@@ -363,7 +363,7 @@ describe('kdna-core renderPreviewHTML', () => {
     };
 
     const domain = kdnaCore.loadDomainFromData({ core: coreData, patterns: patternsData });
-    const html = kdnaCore.renderPreviewHTML(domain);
+    const html = kdnaCore.renderPreviewHTML(domain as any);
     assert.ok(html.includes('<!DOCTYPE html>'));
     assert.ok(html.includes('<title>'));
     assert.ok(html.includes('Test axiom'));
@@ -371,7 +371,7 @@ describe('kdna-core renderPreviewHTML', () => {
   });
 
   it('should handle null domain', () => {
-    const html = kdnaCore.renderPreviewHTML(null);
+    const html = kdnaCore.renderPreviewHTML(null as any);
     assert.ok(html.includes('No domain data'));
   });
 
@@ -403,7 +403,7 @@ describe('kdna-core renderPreviewHTML', () => {
       license: { type: 'CC-BY-4.0' },
       description: 'Custom description',
     };
-    const html = kdnaCore.renderPreviewHTML(domain, manifest);
+    const html = kdnaCore.renderPreviewHTML(domain as any, manifest);
     assert.ok(html.includes('custom-name'));
     assert.ok(html.includes('1.0.0'));
     assert.ok(html.includes('stable'));
@@ -424,7 +424,7 @@ describe('kdna-core escHtml', () => {
   });
 
   it('should handle null/undefined', () => {
-    assert.strictEqual(kdnaCore.escHtml(null), '');
-    assert.strictEqual(kdnaCore.escHtml(undefined), '');
+    assert.strictEqual(kdnaCore.escHtml(null as any), '');
+    assert.strictEqual(kdnaCore.escHtml(undefined as any), '');
   });
 });
