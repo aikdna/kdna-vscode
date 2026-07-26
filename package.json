@@ -165,12 +165,12 @@
     "watch": "tsc -watch -p ./",
     "build": "webpack --mode production",
     "lint": "eslint src --ext ts",
-    "test": "node -e \"if(require(\"fs\").existsSync(\"../kdna/.git\"))require(\"child_process\").execFileSync(process.execPath,[\"scripts/verify-core-candidate-contract.mjs\",\"--core-repo\",\"../kdna\"],{stdio:\"inherit\"})\" && node -e \"require(\"child_process\").execFileSync(process.execPath,[\"scripts/verify-core-candidate-contract.mjs\"],{stdio:\"inherit\"})\" && npm run compile && node --test out/test/unit/*.test.js test/*.test.js",
+    "test": "node scripts/candidate-test-runner.mjs && npm run compile && node --test out/test/unit/*.test.js test/*.test.js",
     "test:integration": "npm run compile && node out/test/runTest.js",
     "package": "vsce package",
     "release:check": "node scripts/verify-release-guard.mjs && node scripts/release-check.js",
-    "test:gate": "node scripts/verify-core-candidate-contract.mjs && node --test test/core-candidate-gate.test.js",
-    "provenance": "node scripts/verify-core-candidate-contract.mjs --core-repo ./kdna && node --test test/core-candidate-gate.test.js"
+    "test:gate": "node --test test/core-candidate-gate.test.js",
+    "provenance": "node scripts/candidate-test-runner.mjs --core-repo ./kdna && node --test test/core-candidate-gate.test.js"
   },
   "dependencies": {
     "@aikdna/kdna-core": "0.21.0",
