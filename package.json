@@ -168,7 +168,8 @@
     "test": "node scripts/verify-core-candidate-contract.mjs && npm run compile && node --test out/test/unit/*.test.js test/*.test.js",
     "test:integration": "npm run compile && node out/test/runTest.js",
     "package": "vsce package",
-    "release:check": "node scripts/verify-core-candidate-contract.mjs && node scripts/release-check.js"
+    "release:check": "node scripts/verify-release-guard.mjs",
+    "test:gate": "node --test test/core-candidate-gate.test.js"
   },
   "dependencies": {
     "@aikdna/kdna-core": "0.21.0",
