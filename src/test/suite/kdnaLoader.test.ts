@@ -6,6 +6,7 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 import * as path from 'path';
+import * as os from 'node:os';
 import * as kdnaCore from '@aikdna/kdna-core';
 import { diagnoseProjectViewData } from '../../utils/projectViewDiagnostics';
 
@@ -15,7 +16,7 @@ suite('Domain Loader Bridge', () => {
   suiteSetup(async () => {
     // Create a temporary domain for testing
     tmpDir = vscode.Uri.file(
-      path.join(require('os').tmpdir(), `kdna-test-${Date.now()}`),
+      path.join(os.tmpdir(), `kdna-test-${Date.now()}`),
     );
     await vscode.workspace.fs.createDirectory(tmpDir);
 

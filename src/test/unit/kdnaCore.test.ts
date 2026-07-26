@@ -10,7 +10,8 @@ import * as assert from 'node:assert';
 import { describe, it } from 'node:test';
 import { diagnoseProjectViewData } from '../../utils/projectViewDiagnostics';
 
-// Dynamic require since this is a CJS module and we're in ESM-ish context
+/* eslint-disable @typescript-eslint/no-require-imports */
+// eslint-disable-next-line @typescript-eslint/no-require-imports and we're in ESM-ish context
 const kdnaCore = require('@aikdna/kdna-core');
 
 describe('kdna-core loader', () => {
