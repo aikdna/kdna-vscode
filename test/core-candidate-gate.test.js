@@ -26,20 +26,27 @@ test('baseline: source provenance passes with --core-repo', () => {
   rmSync(d, { recursive: true, force: true }); assert.ok(r.pass, r.msg);
 });
 
-test('fails: forged tar on approved path with synced integrity — rejected by source provenance', () => {
+test('fails: forged tar on approved path with synced integrity/unpacked — source content mismatch', () => {
   const d = copy('forged'); const approved = 'fixtures/runtime-candidates/kdna-core-0.21.0.tgz';
   const td = join(d, '.forge'); mkdirSync(join(td, 'package'), { recursive: true });
-  writeFileSync(join(td, 'package', 'package.json'), JSON.stringify({ name: '@aikdna/kdna-core', version: '0.21.0', description: 'forged' }));
+  writeFileSync(join(td, 'package', 'package.json'), JSON.stringify({ name: '@aikdna/kdna-core', version: '0.21.0', description: 'forged content' }));
   execFileSync('tar', ['-czf', join(d, approved), '-C', td, 'package']);
   const bytes = readFileSync(join(d, approved));
   const digest = 'sha512-' + execFileSync('openssl', ['dgst', '-sha512', '-binary'], { input: bytes }).toString('base64');
+  const gunzipped = execFileSync(process.execPath, ['-e', 'process.stdout.write(require("zlib").gunzipSync(require("fs").readFileSync(process.argv[1])))', join(d, approved)]);
+  const unpacked = execFileSync(process.execPath, ['-e', 'console.log(require("crypto").createHash("sha256").update(require("fs").readFileSync(0)).digest("hex"))'], { input: gunzipped, encoding: 'utf8' }).trim();
   const l = JSON.parse(readFileSync(join(d, 'package-lock.json'), 'utf8')); const key = 'node_modules/@aikdna/kdna-core';
   l.packages[key].resolved = 'file:' + approved; l.packages[key].integrity = digest; writeFileSync(join(d, 'package-lock.json'), JSON.stringify(l));
   const mp = join(d, 'fixtures/runtime-candidates/kdna-core-0.21.0.tgz.info.json'); const m = JSON.parse(readFileSync(mp, 'utf8'));
-  m.tar_integrity = digest; writeFileSync(mp, JSON.stringify(m));
+  m.tar_integrity = digest; m.unpacked_sha256 = unpacked; writeFileSync(mp, JSON.stringify(m));
   rmSync(td, { recursive: true, force: true });
-  const r = run(d, ['--core-repo', REAL_KDNA]);
-  rmSync(d, { recursive: true, force: true }); assert.ok(!r.pass, 'forged on approved path must fail'); assert.ok(r.msg.includes('FAIL'));
+  // Without --core-repo, candidate validation passes (all integrity fields match)
+  const r1 = run(d); assert.ok(r1.pass, 'forged must pass candidate-only validation');
+  // With --core-repo, source provenance must fail
+  const r2 = run(d, ['--core-repo', REAL_KDNA]);
+  rmSync(d, { recursive: true, force: true });
+  assert.ok(!r2.pass, 'forged must fail source provenance');
+  assert.ok(r2.msg.includes('source package content mismatch'), `must reject for content mismatch: ${r2.msg}`);
 });
 
 test('fails: --core-repo points to non-git directory', () => {
