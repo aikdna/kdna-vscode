@@ -56,7 +56,7 @@ function fakeCli(version = '0.36.0'): { root: string; executable: string; log: s
   fs.writeFileSync(
     executable,
     `#!/usr/bin/env node
-const fs = require('node:fs');
+
 const args = process.argv.slice(2);
 if (args[0] === '--version') {
   process.stdout.write(${JSON.stringify(version)} + '\\n');
