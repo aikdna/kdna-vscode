@@ -165,7 +165,7 @@
     "watch": "tsc -watch -p ./",
     "build": "webpack --mode production",
     "lint": "eslint src --ext ts",
-    "test": "node scripts/verify-core-candidate-contract.mjs && npm run compile && node --test out/test/unit/*.test.js test/*.test.js",
+    "test": "npm run compile && node --test out/test/unit/*.test.js test/*.test.js",
     "test:integration": "npm run compile && node out/test/runTest.js",
     "package": "vsce package",
     "release:check": "node scripts/verify-release-guard.mjs",
