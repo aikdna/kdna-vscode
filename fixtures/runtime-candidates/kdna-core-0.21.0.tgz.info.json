@@ -4,5 +4,6 @@
   "source": "local candidate tar",
   "source_commit": "06fc87c435a6a34a4b3df8eb18e61b7297ca232a",
   "source_tree": "97058afdce4c1768656317301ea5519347a5955b",
-  "tar_integrity": "sha512-lT9+pKaQ8RV+0gZI4GAZke85SjA39ef6ppU29w/dEn8D4Byzbtsqn9MuxxShOBKDUPf4f8U4YCF24qKzMVWdxw=="
+  "tar_integrity": "sha512-lT9+pKaQ8RV+0gZI4GAZke85SjA39ef6ppU29w/dEn8D4Byzbtsqn9MuxxShOBKDUPf4f8U4YCF24qKzMVWdxw==",
+  "unpacked_sha256": "66bf74d572e62c39322bb89b56c30e86ef960022426ebf9b9bc9f64a72937c64"
 }
