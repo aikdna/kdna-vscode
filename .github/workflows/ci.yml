@@ -26,20 +26,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: TypeScript compile
-        run: npx tsc --noEmit
-
-      - name: Candidate contract check
-        run: node scripts/verify-core-candidate-contract.mjs
-
-      - name: Unit tests
-        run: npm run compile && node --test out/test/unit/*.test.js test/release-policy.test.js
+      - name: npm test
+        run: npm test
 
       - name: Lint
         run: npm run lint
-
-      - name: Webpack build
-        run: npm run build
 
       - name: Integration tests (headless VS Code)
         run: xvfb-run -a npm run test:integration
@@ -63,7 +54,6 @@ jobs:
           node-version: '24.14.0'
       - run: npm install -g npm@11.17.0 && npm --version && node --version
       - run: npm ci --ignore-scripts
-      - run: node scripts/candidate-test-runner.mjs --core-repo ./kdna
-      - run: node --test test/core-candidate-gate.test.js
+      - run: npm run provenance
         env:
           KDNA_CORE_REPO: ./kdna
