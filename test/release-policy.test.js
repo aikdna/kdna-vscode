@@ -86,3 +86,19 @@ test('Marketplace workflow is release-only, pinned, and publishes only the retai
   assert.match(workflow, /VSCE_PAT: \$\{\{ secrets\.VSCE_PAT \}\}/);
   assert.doesNotMatch(workflow, /(?:-p|--pat)\s+\$\{\{ secrets\./);
 });
+
+test('CI workflow blocks on build before integration and has no false-green bypass', () => {
+  const ci = fs.readFileSync(path.join(ROOT, '.github/workflows/ci.yml'), 'utf8');
+  // Build must appear before integration tests in the workflow
+  assert.ok(ci.indexOf('Build') < ci.indexOf('Integration tests'),
+    'Build must precede integration tests in CI workflow');
+  // Integration tests must be a blocking step
+  assert.match(ci, /Integration tests.*\n.*run:.*test:integration/,
+    'Integration tests must be a blocking step');
+  // No false-green bypass
+  assert.doesNotMatch(ci, /\|\|\s*(echo|true)/,
+    'CI must not use || echo or || true to bypass failures');
+  assert.doesNotMatch(ci, /continue-on-error:\s*true/,
+    'CI must not use continue-on-error to bypass failures');
+});
+

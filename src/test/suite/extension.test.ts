@@ -25,7 +25,14 @@ suite('Extension Activation', () => {
 
 suite('Commands Registration', () => {
   test('All KDNA commands should be registered', async () => {
-    const commands = await vscode.commands.getCommands(true);
+    // Poll for commands: extension may register asynchronously
+    let commands: string[] = [];
+    for (let i = 0; i < 10; i++) {
+      commands = await vscode.commands.getCommands(true);
+      const kdna = commands.filter((c) => c.startsWith('kdna.'));
+      if (kdna.includes('kdna.validate') && kdna.includes('kdna.pack')) break;
+      await new Promise(r => setTimeout(r, 500));
+    }
     const kdnaCommands = commands.filter((c) => c.startsWith('kdna.'));
 
     assert.ok(kdnaCommands.includes('kdna.validate'), 'validate command missing');
