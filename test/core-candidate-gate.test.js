@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
 const SCRIPT = join(import.meta.dirname, '..', 'scripts', 'verify-core-candidate-contract.mjs');
-const REAL_KDNA = join(import.meta.dirname, '..', '..', 'kdna');
+const REAL_KDNA = process.env.KDNA_CORE_REPO || join(import.meta.dirname, '..', '..', 'kdna');
 
 function run(dir, extraArgs = []) {
   try { execFileSync(process.execPath, [SCRIPT, ...extraArgs], { cwd: dir, stdio: 'pipe', timeout: 30000 }); return { pass: true, msg: '' }; }

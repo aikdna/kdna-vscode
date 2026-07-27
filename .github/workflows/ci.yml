@@ -65,3 +65,5 @@ jobs:
       - run: npm ci --ignore-scripts
       - run: node scripts/candidate-test-runner.mjs --core-repo ./kdna
       - run: node --test test/core-candidate-gate.test.js
+        env:
+          KDNA_CORE_REPO: ./kdna
