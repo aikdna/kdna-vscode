@@ -26,19 +26,37 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: TypeScript compile
-        run: npx tsc --noEmit
-
-      - name: Webpack build
-        run: npm run build
-
-      - name: Unit tests
+      - name: npm test
         run: npm test
+
       - name: Lint
         run: npm run lint
+
+      - name: Build
+        run: npm run build
 
       - name: Integration tests (headless VS Code)
         run: xvfb-run -a npm run test:integration
 
       - name: Package VSIX
         run: npx vsce package
+
+  candidate-provenance:
+    name: candidate-provenance
+    runs-on: ubuntu-latest
+    needs: []
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/checkout@v6
+        with:
+          repository: aikdna/kdna
+          ref: 06fc87c435a6a34a4b3df8eb18e61b7297ca232a
+          path: ./kdna
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24.14.0'
+      - run: npm install -g npm@11.17.0 && npm --version && node --version
+      - run: npm ci --ignore-scripts
+      - run: npm run provenance
+        env:
+          KDNA_CORE_REPO: ./kdna

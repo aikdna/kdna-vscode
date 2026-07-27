@@ -86,3 +86,61 @@ test('Marketplace workflow is release-only, pinned, and publishes only the retai
   assert.match(workflow, /VSCE_PAT: \$\{\{ secrets\.VSCE_PAT \}\}/);
   assert.doesNotMatch(workflow, /(?:-p|--pat)\s+\$\{\{ secrets\./);
 });
+
+// Hostile CI gate tests — validate false-green regression detection
+function validateCiWorkflow(content) {
+  const failures = [];
+  if (!content.includes('Build') || !content.includes('npm run build'))
+    failures.push('Build step missing');
+  if (!content.includes('Integration tests') || !content.includes('test:integration'))
+    failures.push('Integration step missing');
+  const buildIdx = content.indexOf('Build');
+  const integIdx = content.indexOf('Integration tests');
+  if (buildIdx < 0 || integIdx < 0 || buildIdx >= integIdx)
+    failures.push('Build must precede Integration');
+  if (content.includes('|| echo') || content.includes('|| true'))
+    failures.push('|| echo/true bypass detected');
+  if (content.includes('continue-on-error: true'))
+    failures.push('continue-on-error bypass detected');
+  return failures;
+}
+
+const currentCi = fs.readFileSync(path.join(ROOT, '.github/workflows/ci.yml'), 'utf8');
+test('current CI passes false-green gate', () => {
+  assert.deepEqual(validateCiWorkflow(currentCi), []);
+});
+
+test('hostile: CI without Build step fails gate', () => {
+  const ci = currentCi.replace(/- name: Build[\s\S]*?npm run build\n/, '');
+  assert.ok(validateCiWorkflow(ci).some(x => x.includes('Build step missing')));
+});
+
+test('hostile: CI with Integration before Build fails gate', () => {
+  const lines = currentCi.split('\n');
+  const buildIdx = lines.findIndex(l => l.includes('name: Build'));
+  const integIdx = lines.findIndex(l => l.includes('Integration tests'));
+  if (buildIdx >= 0 && integIdx >= 0) {
+    // Move Integration section before Build
+    const integSection = '      - name: Dummy Integration tests\n        run: xvfb-run -a npm run test:integration\n';
+    const withoutBuild = currentCi.replace(/- name: Build[\s\S]*?npm run build\n/, '');
+    const ci = withoutBuild.replace(
+      '- name: Integration tests (headless VS Code)\n        run: xvfb-run -a npm run test:integration\n',
+      integSection + '- name: Build\n        run: npm run build\n');
+    assert.ok(validateCiWorkflow(ci).some(x => x.includes('Build must precede')));
+  }
+});
+
+test('hostile: CI with Integration || echo fails gate', () => {
+  const ci = currentCi.replace(
+    'xvfb-run -a npm run test:integration',
+    'xvfb-run -a npm run test:integration || echo "failed"');
+  assert.ok(validateCiWorkflow(ci).some(x => x.includes('|| echo')));
+});
+
+test('hostile: CI with Integration continue-on-error fails gate', () => {
+  const ci = currentCi.replace(
+    'xvfb-run -a npm run test:integration\n',
+    'xvfb-run -a npm run test:integration\n        continue-on-error: true\n');
+  assert.ok(validateCiWorkflow(ci).some(x => x.includes('continue-on-error')));
+});
+

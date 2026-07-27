@@ -10,9 +10,7 @@ import * as assert from 'node:assert';
 import { describe, it } from 'node:test';
 import { diagnoseProjectViewData } from '../../utils/projectViewDiagnostics';
 
-/* eslint-disable @typescript-eslint/no-require-imports */
-// eslint-disable-next-line @typescript-eslint/no-require-imports and we're in ESM-ish context
-const kdnaCore = require('@aikdna/kdna-core');
+import * as kdnaCore from '@aikdna/kdna-core';
 
 describe('kdna-core loader', () => {
   it('should export FILE_MAP', () => {
@@ -45,8 +43,8 @@ describe('kdna-core loader', () => {
   });
 
   it('should return null for null data', () => {
-    assert.strictEqual(kdnaCore.loadCorePatternsFromData(null, null), null);
-    assert.strictEqual(kdnaCore.loadCorePatternsFromData(null, {}), null);
+    assert.strictEqual(kdnaCore.loadCorePatternsFromData(null as any, null as any), null);
+    assert.strictEqual(kdnaCore.loadCorePatternsFromData(null as any, {} as any), null);
   });
 
   it('should load domain from data map with minimum mode', () => {
@@ -165,51 +163,51 @@ describe('kdna-core formatContext', () => {
 
   it('should produce a non-empty context string', () => {
     const domain = makeDomain();
-    const ctx = kdnaCore.formatContext(domain);
+    const ctx = kdnaCore.formatContext(domain as any);
     assert.ok(ctx.length > 0);
   });
 
   it('should include domain name', () => {
     const domain = makeDomain();
-    const ctx = kdnaCore.formatContext(domain);
+    const ctx = kdnaCore.formatContext(domain as any);
     assert.ok(ctx.includes('test-domain'));
   });
 
   it('should include axioms', () => {
     const domain = makeDomain();
-    const ctx = kdnaCore.formatContext(domain);
+    const ctx = kdnaCore.formatContext(domain as any);
     assert.ok(ctx.includes('Test axiom'));
     assert.ok(ctx.includes('Important reason'));
   });
 
   it('should include stances', () => {
     const domain = makeDomain();
-    const ctx = kdnaCore.formatContext(domain);
+    const ctx = kdnaCore.formatContext(domain as any);
     assert.ok(ctx.includes('Be helpful'));
   });
 
   it('should include banned terms', () => {
     const domain = makeDomain();
-    const ctx = kdnaCore.formatContext(domain);
+    const ctx = kdnaCore.formatContext(domain as any);
     assert.ok(ctx.includes('bad'));
     assert.ok(ctx.includes('specific'));
   });
 
   it('should include self checks', () => {
     const domain = makeDomain();
-    const ctx = kdnaCore.formatContext(domain);
+    const ctx = kdnaCore.formatContext(domain as any);
     assert.ok(ctx.includes('Did it work?'));
   });
 
   it('should include misunderstandings', () => {
     const domain = makeDomain();
-    const ctx = kdnaCore.formatContext(domain);
+    const ctx = kdnaCore.formatContext(domain as any);
     assert.ok(ctx.includes('Wrong idea'));
     assert.ok(ctx.includes('Right idea'));
   });
 
   it('should return empty string for null domain', () => {
-    assert.strictEqual(kdnaCore.formatContext(null), '');
+    assert.strictEqual(kdnaCore.formatContext(null as any), '');
   });
 });
 
@@ -320,7 +318,7 @@ describe('kdna-core validateCrossFile', () => {
       'KDNA_Core.json': { meta: { domain: 'domain-a', version: '0.4' } },
       'KDNA_Patterns.json': { meta: { domain: 'domain-b', version: '0.4' } },
     };
-    const result = kdnaCore.validateCrossFile(dataMap);
+    const result = kdnaCore.validateCrossFile(dataMap as any);
     assert.ok(result.errors.length > 0);
     assert.ok(result.errors[0].includes('domain-b'));
   });
@@ -330,7 +328,7 @@ describe('kdna-core validateCrossFile', () => {
       'KDNA_Core.json': { meta: { domain: 'test', version: '0.4' } },
       'KDNA_Patterns.json': { meta: { domain: 'test', version: '0.5' } },
     };
-    const result = kdnaCore.validateCrossFile(dataMap);
+    const result = kdnaCore.validateCrossFile(dataMap as any);
     assert.ok(result.errors.length > 0);
     assert.ok(result.errors[0].includes('version'));
   });
@@ -340,7 +338,7 @@ describe('kdna-core validateCrossFile', () => {
       'KDNA_Core.json': { meta: { domain: 'test', version: '0.4' } },
       'KDNA_Patterns.json': { meta: { domain: 'test', version: '0.4' } },
     };
-    const result = kdnaCore.validateCrossFile(dataMap);
+    const result = kdnaCore.validateCrossFile(dataMap as any);
     assert.strictEqual(result.errors.length, 0);
   });
 });
@@ -403,7 +401,7 @@ describe('kdna-core renderPreviewHTML', () => {
       license: { type: 'CC-BY-4.0' },
       description: 'Custom description',
     };
-    const html = kdnaCore.renderPreviewHTML(domain as any, manifest);
+    const html = kdnaCore.renderPreviewHTML(domain as any, manifest as any);
     assert.ok(html.includes('custom-name'));
     assert.ok(html.includes('1.0.0'));
     assert.ok(html.includes('stable'));
