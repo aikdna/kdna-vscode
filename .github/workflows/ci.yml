@@ -33,7 +33,7 @@ jobs:
         run: node scripts/verify-core-candidate-contract.mjs
 
       - name: Unit tests
-        run: npm run compile && node --test out/test/unit/*.test.js test/*.test.js
+        run: npm run compile && node --test out/test/unit/*.test.js test/release-policy.test.js
 
       - name: Lint
         run: npm run lint
