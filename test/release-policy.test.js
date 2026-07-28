@@ -110,12 +110,14 @@ test('current CI passes false-green gate', () => {
   assert.deepEqual(validateCiWorkflow(currentCi), []);
 });
 
-test('integration runner disables GPU so macOS exits after the test host succeeds', () => {
+test('integration runner exits cleanly without touching the macOS Keychain', () => {
   const runner = fs.readFileSync(path.join(ROOT, 'src/test/runTest.ts'), 'utf8');
-  assert.match(
-    runner,
-    /launchArgs:\s*\['--disable-extensions',\s*'--disable-gpu'\]/,
-  );
+  assert.match(runner, /process\.platform === 'darwin'/);
+  assert.match(runner, /launchArgs\.push\('--use-mock-keychain'\)/);
+  assert.doesNotMatch(runner, /password-store=basic/);
+  assert.match(currentCi, /macos-keychain-isolation:/);
+  assert.match(currentCi, /runs-on: macos-14/);
+  assert.match(currentCi, /Integration tests \(mock macOS Keychain\)[\s\S]*?npm run test:integration/);
 });
 
 test('hostile: CI without Build step fails gate', () => {

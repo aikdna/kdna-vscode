@@ -60,3 +60,20 @@ jobs:
       - run: npm run provenance
         env:
           KDNA_CORE_REPO: ./kdna
+
+  macos-keychain-isolation:
+    name: macos-keychain-isolation
+    runs-on: macos-14
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24.x'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm test
+      - run: npm run lint
+      - run: npm run build
+      - name: Integration tests (mock macOS Keychain)
+        run: npm run test:integration
