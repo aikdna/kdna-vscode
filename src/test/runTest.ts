@@ -10,11 +10,17 @@ async function main() {
   try {
     const extensionDevelopmentPath = path.resolve(__dirname, '../../');
     const extensionTestsPath = path.resolve(__dirname, './suite/index');
+    const launchArgs = ['--disable-extensions', '--disable-gpu'];
+    if (process.platform === 'darwin') {
+      // Chromium's test-only mock prevents Extension Host automation from
+      // reading, creating, or repairing the user's macOS Keychain.
+      launchArgs.push('--use-mock-keychain');
+    }
 
     await runTests({
       extensionDevelopmentPath,
       extensionTestsPath,
-      launchArgs: ['--disable-extensions', '--disable-gpu'],
+      launchArgs,
     });
   } catch (err) {
     console.error('Failed to run tests:', err);
