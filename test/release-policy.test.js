@@ -110,6 +110,14 @@ test('current CI passes false-green gate', () => {
   assert.deepEqual(validateCiWorkflow(currentCi), []);
 });
 
+test('integration runner disables GPU so macOS exits after the test host succeeds', () => {
+  const runner = fs.readFileSync(path.join(ROOT, 'src/test/runTest.ts'), 'utf8');
+  assert.match(
+    runner,
+    /launchArgs:\s*\['--disable-extensions',\s*'--disable-gpu'\]/,
+  );
+});
+
 test('hostile: CI without Build step fails gate', () => {
   const ci = currentCi.replace(/- name: Build[\s\S]*?npm run build\n/, '');
   assert.ok(validateCiWorkflow(ci).some(x => x.includes('Build step missing')));
@@ -143,4 +151,3 @@ test('hostile: CI with Integration continue-on-error fails gate', () => {
     'xvfb-run -a npm run test:integration\n        continue-on-error: true\n');
   assert.ok(validateCiWorkflow(ci).some(x => x.includes('continue-on-error')));
 });
-
