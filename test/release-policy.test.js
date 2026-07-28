@@ -108,6 +108,7 @@ function validateCiWorkflow(content) {
 const currentCi = fs.readFileSync(path.join(ROOT, '.github/workflows/ci.yml'), 'utf8');
 test('current CI passes false-green gate', () => {
   assert.deepEqual(validateCiWorkflow(currentCi), []);
+  assert.match(currentCi, /^permissions:\n  contents: read$/m);
 });
 
 test('integration runner exits cleanly without touching the macOS Keychain', () => {
