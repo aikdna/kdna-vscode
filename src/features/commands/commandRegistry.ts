@@ -114,11 +114,17 @@ async function cmdValidate(domainUri?: vscode.Uri) {
   const totalWarnings = schemaResult.warnings.length + crossResult.warnings.length;
 
   if (totalErrors === 0 && totalWarnings === 0) {
-    channel.appendLine('✓ Domain is valid.');
-    vscode.window.showInformationMessage('KDNA: Domain is valid.');
+    channel.appendLine('✓ Project view passes current technical checks. This is not Creation Complete.');
+    vscode.window.showInformationMessage(
+      'KDNA: Project view passes current technical checks; Creation gates have not run.',
+    );
   } else if (totalErrors === 0) {
-    channel.appendLine(`✓ Domain valid with ${totalWarnings} warning(s).`);
-    vscode.window.showWarningMessage(`KDNA: Domain valid with ${totalWarnings} warning(s).`);
+    channel.appendLine(
+      `✓ Project view passes technical checks with ${totalWarnings} warning(s). This is not Creation Complete.`,
+    );
+    vscode.window.showWarningMessage(
+      `KDNA: Project view has ${totalWarnings} technical warning(s); Creation gates have not run.`,
+    );
   } else {
     channel.appendLine(`✗ ${totalErrors} error(s), ${totalWarnings} warning(s).`);
     vscode.window.showErrorMessage(`KDNA: ${totalErrors} validation error(s). See Output panel.`);
@@ -146,7 +152,9 @@ async function cmdPack(domainUri?: vscode.Uri) {
   }
   try {
     kdnaCore.pack(domainUri.fsPath, outputUri.fsPath);
-    vscode.window.showInformationMessage(`KDNA: Packed canonical asset to ${outputUri.fsPath}.`);
+    vscode.window.showInformationMessage(
+      `KDNA: Created a technical package at ${outputUri.fsPath}. This is not Creation Complete or a reviewed Studio export.`,
+    );
   } catch (error: any) {
     vscode.window.showErrorMessage(
       `KDNA: Core rejected this project view — ${error.message}. Use KDNA Studio export for authoring projects.`,
@@ -225,163 +233,6 @@ async function cmdInstall() {
   channel.show();
 }
 
-// ─── Create ──────────────────────────────────────────────────────────
-
-async function cmdCreate() {
-  const name = await vscode.window.showInputBox({
-    prompt: 'Enter the domain name (snake_case, e.g. my_domain)',
-    placeHolder: 'my_domain',
-    validateInput: (value) =>
-      /^[a-z][a-z0-9_]*$/.test(value) ? null : 'Use lowercase letters, digits, and underscores.',
-  });
-  if (!name) return;
-
-  const workspaceFolders = vscode.workspace.workspaceFolders;
-  const defaultUri = workspaceFolders?.[0]?.uri || vscode.Uri.file(process.cwd());
-
-  const targetUris = await vscode.window.showOpenDialog({
-    canSelectFiles: false,
-    canSelectFolders: true,
-    canSelectMany: false,
-    defaultUri,
-    title: 'Select parent directory for new KDNA project view',
-  });
-  if (!targetUris?.length) return;
-
-  const domainDir = vscode.Uri.joinPath(targetUris[0], name);
-
-  const today = new Date().toISOString().slice(0, 10);
-
-  const manifest = {
-    format: 'kdna',
-    format_version: '1.0',
-    spec_version: '1.0-rc',
-    name,
-    version: '0.1.0',
-    languages: ['en'],
-    default_language: 'en',
-    created: today,
-    updated: today,
-    description: 'One-sentence description of what judgment this domain improves.',
-    keywords: [],
-    access: 'open',
-    author: { name: 'Your Name', id: 'your-id' },
-    license: {
-      type: 'CC-BY-4.0',
-      commercial: false,
-      allow_agent_use: true,
-      allow_redistribution: true,
-      allow_training: true,
-    },
-    status: 'experimental',
-    quality_badge: 'untested',
-    authoring: {
-      created_by: 'manual-project-view',
-      authoring_tool: 'kdna-vscode',
-      human_lock_required: false,
-      human_lock_policy: 'optional_provenance',
-      human_lock_count: 0,
-      ai_assisted: false,
-      human_confirmed: false,
-    },
-    file_count: 2,
-    files: ['KDNA_Core.json', 'KDNA_Patterns.json'],
-  };
-
-  const core = {
-    meta: {
-      version: '0.4',
-      domain: name,
-      created: today,
-      purpose: 'Define the core cognition of this domain.',
-      load_condition: 'Load only when the packaged asset LoadPlan allows it.',
-    },
-    axioms: [
-      {
-        id: 'AX-001',
-        one_sentence: 'One core judgment principle.',
-        full_statement: 'A testable, domain-specific principle.',
-        why: 'What the agent would get wrong WITHOUT this axiom.',
-      },
-    ],
-    ontology: [
-      {
-        id: 'CON-001',
-        one_sentence: 'Name one central concept the agent must distinguish.',
-        essence: 'Operational meaning in this domain.',
-        boundary: 'What this concept is NOT.',
-        trigger_signal: 'Words or patterns that signal this concept is relevant.',
-      },
-    ],
-    frameworks: [
-      {
-        id: 'FW-001',
-        name: 'Example Framework',
-        when_to_use: 'Specific condition where this framework applies.',
-        steps: ['Step 1', 'Step 2', 'Step 3'],
-      },
-    ],
-    core_structure: [
-      { from: 'Surface symptom', to: 'Correct judgment', via: 'Cognitive shift' },
-    ],
-    stances: ['Default position the agent should bias toward.', 'Position the agent should argue against.'],
-  };
-
-  const patterns = {
-    meta: {
-      version: '0.4',
-      domain: name,
-      created: today,
-      purpose: 'Define terminology, misunderstandings, and self-checks.',
-      load_condition: 'Load only when the packaged asset LoadPlan allows it.',
-    },
-    terminology: {
-      standard_terms: [{ term: 'preferred term', definition: 'Operational definition.' }],
-      banned_terms: [
-        {
-          term: 'term to avoid',
-          why: 'Why this term misleads agent judgment.',
-          replace_with: 'A concrete replacement.',
-        },
-      ],
-    },
-    misunderstandings: [
-      {
-        id: 'MS-001',
-        wrong: 'Common wrong interpretation.',
-        correct: 'Correct interpretation.',
-        key_distinction: 'The boundary the agent must preserve.',
-        why: 'What bad judgment results from the wrong interpretation.',
-      },
-    ],
-    self_check: [
-      'Did the answer apply the domain\'s core distinction?',
-      'Would a domain expert agree with this judgment?',
-    ],
-  };
-
-  await vscode.workspace.fs.createDirectory(domainDir);
-  await vscode.workspace.fs.writeFile(
-    vscode.Uri.joinPath(domainDir, 'kdna.json'),
-    Buffer.from(JSON.stringify(manifest, null, 2) + '\n'),
-  );
-  await vscode.workspace.fs.writeFile(
-    vscode.Uri.joinPath(domainDir, 'KDNA_Core.json'),
-    Buffer.from(JSON.stringify(core, null, 2) + '\n'),
-  );
-  await vscode.workspace.fs.writeFile(
-    vscode.Uri.joinPath(domainDir, 'KDNA_Patterns.json'),
-    Buffer.from(JSON.stringify(patterns, null, 2) + '\n'),
-  );
-
-  // Open the manifest
-  const doc = await vscode.workspace.openTextDocument(vscode.Uri.joinPath(domainDir, 'kdna.json'));
-  await vscode.window.showTextDocument(doc);
-  vscode.window.showInformationMessage(
-    `KDNA: Created expanded project view "${name}". Use KDNA Studio export to create publishable .kdna files.`,
-  );
-}
-
 // ─── Register All ────────────────────────────────────────────────────
 
 export function registerCommands(context: vscode.ExtensionContext) {
@@ -391,6 +242,5 @@ export function registerCommands(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(COMMANDS.UNPACK, cmdUnpack),
     vscode.commands.registerCommand(COMMANDS.PREVIEW, cmdPreview),
     vscode.commands.registerCommand(COMMANDS.INSTALL, cmdInstall),
-    vscode.commands.registerCommand(COMMANDS.CREATE, cmdCreate),
   );
 }

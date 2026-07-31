@@ -40,7 +40,7 @@ suite('Commands Registration', () => {
     assert.ok(kdnaCommands.includes('kdna.unpack'), 'unpack command missing');
     assert.ok(kdnaCommands.includes('kdna.preview'), 'preview command missing');
     assert.ok(kdnaCommands.includes('kdna.install'), 'install command missing');
-    assert.ok(kdnaCommands.includes('kdna.create'), 'create command missing');
+    assert.ok(!kdnaCommands.includes('kdna.create'), 'retired parallel create command must stay disabled');
     assert.ok(kdnaCommands.includes('kdna.workspaceStatus'), 'workspaceStatus command missing');
     assert.ok(kdnaCommands.includes('kdna.workspaceAttach'), 'workspaceAttach command missing');
   });
@@ -83,5 +83,15 @@ suite('Workspace Trust Boundary', () => {
       const item = commandPalette.find((candidate: any) => candidate.command === command);
       assert.equal(item?.when, 'isWorkspaceTrusted', `${command} should be hidden until trusted`);
     }
+    assert.ok(
+      !manifest.activationEvents.includes('onCommand:kdna.create'),
+      'retired create command must not activate the extension',
+    );
+    assert.ok(
+      manifest.contributes.commands
+        .find((candidate: any) => candidate.command === 'kdna.pack')
+        ?.title.includes('Not Creation Complete'),
+      'pack must be labeled as a technical operation',
+    );
   });
 });

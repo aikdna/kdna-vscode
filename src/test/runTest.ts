@@ -20,6 +20,9 @@ async function main() {
     await runTests({
       extensionDevelopmentPath,
       extensionTestsPath,
+      // Pin the integration runtime so CI and local evidence do not silently
+      // move when the VS Code stable channel advances.
+      version: '1.130.0',
       launchArgs,
     });
   } catch (err) {
