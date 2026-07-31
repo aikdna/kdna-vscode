@@ -69,7 +69,20 @@ test('public release status separates the published incumbent from the source ca
   const readme = fs.readFileSync(path.join(ROOT, 'README.md'), 'utf8');
   assert.match(readme, /historical `0\.1\.0` incumbent/);
   assert.match(readme, /`0\.2\.0` remains unpublished/);
+  assert.match(readme, /unreleased evaluation candidate/);
   assert.doesNotMatch(readme, /^The extension is not published to the VS Code Marketplace/m);
+  for (const internalNarrative of [
+    new RegExp(['owner', 'approved'].join('[- ]'), 'i'),
+    new RegExp(['owner', 'reviewed'].join('[- ]'), 'i'),
+    new RegExp(['fact', 'card'].join('[- ]'), 'i'),
+    new RegExp(
+      `${['no', 'tag'].join(' ')}.{0,24}${['release', 'automation'].join(' ')}`,
+      'i',
+    ),
+    new RegExp(['branch', 'strategy'].join('[- ]'), 'i'),
+  ]) {
+    assert.doesNotMatch(readme, internalNarrative);
+  }
 });
 
 test('Marketplace workflow is release-only, pinned, and publishes only the retained VSIX', () => {
