@@ -1,26 +1,26 @@
 # KDNA Developer Tools for VS Code
 
 > **Status:** editor-integration mission retained. The source-only corrective
-> candidate is bound to exact merged KDNA Core commit
-> `76bbc587ce05f7e575c2373832cc5c9eee9df98a`; no Marketplace release or
-> compatibility approval has been granted.
+> candidate is bound to exact KDNA Core bytes; it has not been published to the
+> Marketplace or established as a stable compatibility surface.
 
 This repository owns KDNA's editor integration: helping a developer make
 judgment material explicit, inspect and diagnose it while editing, and invoke
-the official creation and consumption contracts without teaching the editor a
-parallel KDNA format.
+the official consumption contracts without teaching the editor a parallel
+KDNA format.
 
 The local `0.2.0` corrective candidate routes packaged assets through the
 current CBOR, LoadPlan, and Runtime Capsule contracts. Its expanded project
 view remains an editor-side authoring surface, not a parallel runtime format.
-The exact candidate still requires final ecosystem validation and owner
-approval before a release can be proposed.
+The exact candidate still requires ecosystem compatibility and publication
+gates before a release can be proposed.
 
 ## Mission
 
 - Edit KDNA project-view JSON and Studio-compatible authoring workspaces.
 - Surface source structure, scope and boundary diagnostics during editing.
-- Invoke the official Studio path when a user creates or exports an asset.
+- Keep Creation in the separate Studio CLI. This extension currently neither
+  invokes Studio nor creates its own project-view or manifest format.
 - Use Core's official inspect, LoadPlan, and Runtime Capsule contracts for one
   explicitly opened `.kdna` file.
 - Use the exact configured CLI for approved workspace attachment status and
@@ -64,13 +64,27 @@ mutate snapshots itself. It validates the exact CLI's bounded status JSON.
 - Marketplace currently carries the historical `0.1.0` incumbent. The current
   `0.2.0` source and its expanded workspace contract have not been published
   and do not inherit a compatibility claim from that older extension.
-- The current `0.2.0` source is a verified candidate, not an owner-approved
-  adapter release.
+- The current `0.2.0` source is an unreleased evaluation candidate, not a
+  Marketplace release or a stable support commitment.
 - Old direct project-view operations are historical implementation debt,
   not protocol authority and not a pattern for new integrations.
-- A future release requires an owner-reviewed fact card, exact Core/CLI pins,
-  contract tests and normal release approval. No tag or release automation is
-  authorized before that checkpoint.
+- Any future release must bind exact compatible Core/CLI versions and pass the
+  extension's contract, security, packaging, and Marketplace release checks.
+
+## Creation and technical project-view operations
+
+The retired parallel project-view creation action is disabled in the `0.2.0`
+source candidate because it generated an obsolete manifest that the current
+Core contract rejects. To create an asset, install an exact compatible
+`@aikdna/kdna-studio-cli` separately and follow that package's creation flow.
+This extension does not invoke it or generate a replacement manifest, does not
+discover a Studio executable from `PATH`, and does not claim that Studio
+integration is already present.
+
+`Validate Project View`, `Pack Project View`, and `Preview Structure` remain
+developer operations. They check or transform technical project-view bytes;
+they do not run the Studio creation gates, do not establish Creation Complete,
+and do not make an asset publication-ready.
 
 ## Protocol ownership
 
@@ -115,9 +129,9 @@ Or via the UI: Extensions view → `···` menu → **Install from VSIX...** �
 select the `.vsix` file.
 
 Marketplace publication status is unchanged: `0.1.0` remains the published
-incumbent and `0.2.0` remains unpublished. Any `.vsix` file built here is a
-local candidate, not an owner-approved adapter release, and remains subject to
-the release boundary above.
+incumbent and `0.2.0` remains unpublished. Any `.vsix` file built here is for
+source evaluation and does not carry the support or compatibility status of a
+Marketplace release.
 
 ## License
 

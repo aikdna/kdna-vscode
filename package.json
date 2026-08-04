@@ -39,7 +39,6 @@
     "onCommand:kdna.unpack",
     "onCommand:kdna.preview",
     "onCommand:kdna.install",
-    "onCommand:kdna.create",
     "onCommand:kdna.workspaceStatus",
     "onCommand:kdna.workspaceAttach",
     "workspaceContains:.kdna/attachments.json",
@@ -65,11 +64,11 @@
     "commands": [
       {
         "command": "kdna.validate",
-        "title": "KDNA: Validate Domain"
+        "title": "KDNA: Validate Project View (Technical)"
       },
       {
         "command": "kdna.pack",
-        "title": "KDNA: Pack Project View"
+        "title": "KDNA: Pack Project View (Not Creation Complete)"
       },
       {
         "command": "kdna.unpack",
@@ -77,15 +76,11 @@
       },
       {
         "command": "kdna.preview",
-        "title": "KDNA: Preview Domain"
+        "title": "KDNA: Preview Structure (Technical)"
       },
       {
         "command": "kdna.install",
         "title": "KDNA: Open Local .kdna Asset"
-      },
-      {
-        "command": "kdna.create",
-        "title": "KDNA: Create Project View"
       },
       {
         "command": "kdna.workspaceStatus",
@@ -108,7 +103,7 @@
     "viewsWelcome": [
       {
         "view": "kdna-domains",
-        "contents": "No expanded KDNA project views found in this workspace.\n[Create Project View](command:kdna.create)\n[Open Local .kdna Asset](command:kdna.install)"
+        "contents": "No expanded KDNA project views found in this workspace.\nCreation requires a separately installed compatible KDNA Studio CLI; this extension does not generate project views.\n[Open Local .kdna Asset](command:kdna.install)"
       }
     ],
     "menus": {
@@ -165,8 +160,8 @@
     "watch": "tsc -watch -p ./",
     "build": "webpack --mode production",
     "lint": "eslint src --ext ts",
-    "test": "node scripts/verify-core-candidate-contract.mjs && node --test test/core-candidate-gate.test.js && npm run compile && node --test out/test/unit/*.test.js test/release-policy.test.js",
-    "test:integration": "npm run compile && node out/test/runTest.js",
+    "test": "node scripts/check-public-current-surface.mjs && node --test test/public-current-surface.test.js && node scripts/verify-core-candidate-contract.mjs && node --test test/core-candidate-gate.test.js && npm run compile && node --test out/test/unit/*.test.js test/release-policy.test.js",
+    "test:integration": "npm run compile && npm run build && node out/test/runTest.js",
     "package": "vsce package",
     "release:check": "node scripts/verify-release-guard.mjs && node scripts/release-check.js",
     "test:gate": "node scripts/verify-core-candidate-contract.mjs && node --test test/core-candidate-gate.test.js",

@@ -6,7 +6,6 @@ export const COMMANDS = {
   UNPACK: 'kdna.unpack',
   PREVIEW: 'kdna.preview',
   INSTALL: 'kdna.install',
-  CREATE: 'kdna.create',
   WORKSPACE_STATUS: 'kdna.workspaceStatus',
   WORKSPACE_ATTACH: 'kdna.workspaceAttach',
 } as const;

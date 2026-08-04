@@ -17,6 +17,8 @@ claim.
 - Edit KDNA project-view JSON and Studio-compatible authoring workspaces.
 - Validate source structure and surface diagnostics while the user edits.
 - Preview project-view structure for development review.
+- Keep Creation delegated to a separately installed compatible Studio CLI;
+  the current extension does not invoke it or generate a replacement manifest.
 - Use Core's official contracts for one explicitly opened packaged asset.
 - Call the exact configured CLI for workspace attachment status and controls.
 - Keep attachment identity, digest, scope, state, and control entry visible.
@@ -32,6 +34,8 @@ claim.
   installed runtime assets.
 - Do not create release-reviewed `.kdna` exports. Reviewed export provenance
   belongs to KDNA Studio or a Studio-compatible compiler.
+- Do not describe technical validate, pack, or preview operations as Creation
+  Complete or as evidence that Studio creation gates ran.
 - Do not require a registry or marketplace for local `.kdna` loading.
 - Do not parse `.kdna/attachments.json`, scan a global asset directory, or
   implement another resolver or attachment database.

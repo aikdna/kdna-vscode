@@ -107,6 +107,9 @@ ${styles.replace(/:root\{[^}]*\}/g, ':root{--bg:var(--vscode-editor-background);
 </style>
 </head>
 <body>
+<aside style="padding:10px 14px;border-bottom:1px solid var(--vscode-panel-border);color:var(--vscode-descriptionForeground)">
+Technical preview only. This does not mean Creation Complete, publication-ready, or reviewed Studio export.
+</aside>
 ${bodyContent}
 </body>
 </html>`;

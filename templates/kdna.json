@@ -1,42 +1,6 @@
 {
-  "format": "kdna",
-  "format_version": "1.0",
-  "spec_version": "1.0-rc",
-  "name": "example_domain",
-  "version": "0.1.0",
-  "judgment_version": "0.1.0",
-  "languages": ["en"],
-  "default_language": "en",
-  "created": "YYYY-MM-DD",
-  "updated": "YYYY-MM-DD",
-  "description": "One-sentence description of what judgment this domain improves.",
-  "keywords": ["keyword1", "keyword2"],
-  "access": "open",
-  "author": {
-    "name": "Your Name",
-    "id": "your-id"
-  },
-  "license": {
-    "type": "CC-BY-4.0",
-    "commercial": false,
-    "allow_agent_use": true,
-    "allow_redistribution": true,
-    "allow_training": true
-  },
-  "status": "experimental",
-  "quality_badge": "untested",
-  "authoring": {
-    "created_by": "manual-dev-source",
-    "authoring_tool": "kdna-vscode",
-    "human_lock_required": false,
-    "human_lock_policy": "optional_provenance",
-    "human_lock_count": 0,
-    "ai_assisted": false,
-    "human_confirmed": false
-  },
-  "registry": {
-    "repo": "https://github.com/your-org/your-repo"
-  },
-  "file_count": 2,
-  "files": ["KDNA_Core.json", "KDNA_Patterns.json"]
+  "_status": "RETIRED_NOT_A_TEMPLATE",
+  "_packaged": false,
+  "_creation_path": "@aikdna/kdna-studio-cli",
+  "_message": "This compatibility tombstone is not a KDNA manifest. The VS Code extension does not create project views; use an exact compatible Studio CLI creation flow."
 }
