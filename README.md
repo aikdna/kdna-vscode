@@ -26,10 +26,11 @@ gates before a release can be proposed.
 - Use the exact configured CLI for approved workspace attachment status and
   controls instead of reading or rewriting `.kdna/attachments.json`.
 
-## Workspace attachment source candidate
+## Workspace attachment
 
-The current source adds a visible, workspace-scoped control surface. It requires
-an explicit resource setting pointing to the exact CLI 0.36.0 entry:
+The extension adds a visible, workspace-scoped control surface. It requires
+an explicit resource setting pointing to the exact CLI entry (CLI 0.36.0 or
+later):
 
 ```json
 {
@@ -37,9 +38,9 @@ an explicit resource setting pointing to the exact CLI 0.36.0 entry:
 }
 ```
 
-CLI 0.36.0 is not yet published. This setting is for coordinated source
-acceptance only; an empty setting leaves workspace controls disabled rather
-than falling back to another CLI or scanning `PATH`.
+The CLI is published; point this setting at the installed CLI entry. An empty
+setting leaves workspace controls disabled rather than falling back to another
+CLI or scanning `PATH`.
 
 Workspace attachment controls are also disabled in VS Code Restricted Mode.
 The CLI setting is declared trust-sensitive, and no configured executable is
