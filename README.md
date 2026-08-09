@@ -1,36 +1,54 @@
 # KDNA Developer Tools for VS Code
 
-> **Status:** editor-integration mission retained. The source-only corrective
-> candidate is bound to exact KDNA Core bytes; it has not been published to the
-> Marketplace or established as a stable compatibility surface.
+**Edit KDNA project views, inspect explicit `.kdna` assets, and manage approved
+workspace attachments through the official KDNA CLI — all from inside VS Code.**
 
-This repository owns KDNA's editor integration: helping a developer make
-judgment material explicit, inspect and diagnose it while editing, and invoke
-the official consumption contracts without teaching the editor a parallel
-KDNA format.
+This extension helps developers working with KDNA judgment assets:
 
-The local `0.2.0` corrective candidate routes packaged assets through the
-current CBOR, LoadPlan, and Runtime Capsule contracts. Its expanded project
-view remains an editor-side authoring surface, not a parallel runtime format.
-The exact candidate still requires ecosystem compatibility and publication
-gates before a release can be proposed.
+- **Validate Project View** (`KDNA: Validate Project View (Technical)`) — check
+  project-view JSON structure and surface scope/boundary diagnostics while you
+  edit.
+- **Pack / Unpack** — pack a project view into a `.kdna` container, or unpack an
+  existing `.kdna` file.
+- **Preview Structure** — inspect a `.kdna` asset through the official Core
+  contracts and see the Runtime Capsule context.
+- **Workspace Attachments** — a visible, workspace-scoped control surface for
+  approved CLI attachments (status, disable/enable, switch, offline rollback,
+  remove).
 
-## Mission
+All parsing, integrity, authorization, and projection are delegated to the
+official KDNA Core and CLI. This extension does not teach the editor a parallel
+KDNA format, and it does not define container fields, access modes, crypto,
+LoadPlan states, or Runtime Capsule semantics. It renders `.kdna` files with
+syntax highlighting and runs the exact operations below.
 
-- Edit KDNA project-view JSON and Studio-compatible authoring workspaces.
-- Surface source structure, scope and boundary diagnostics during editing.
-- Keep Creation in the separate Studio CLI. This extension currently neither
-  invokes Studio nor creates its own project-view or manifest format.
-- Use Core's official inspect, LoadPlan, and Runtime Capsule contracts for one
-  explicitly opened `.kdna` file.
-- Use the exact configured CLI for approved workspace attachment status and
-  controls instead of reading or rewriting `.kdna/attachments.json`.
+> New to KDNA? → [KDNA Core](https://github.com/aikdna/kdna)
+>
+> Creating assets? → [@aikdna/kdna-studio-cli](https://github.com/aikdna/kdna-studio-cli)
+>
+> The exact published runtime toolchain →
+> [@aikdna/kdna-cli](https://github.com/aikdna/kdna-cli)
 
-## Workspace attachment
+---
 
-The extension adds a visible, workspace-scoped control surface. It requires
-an explicit resource setting pointing to the exact CLI entry (CLI 0.36.0 or
-later):
+## Install
+
+The extension is not yet published to the VS Code Marketplace. Install the
+latest `0.2.0` build from a local `.vsix` package:
+
+```bash
+npm ci
+npm run package
+code --install-extension kdna-vscode-0.2.0.vsix
+```
+
+Or via the UI: Extensions view → `···` menu → **Install from VSIX...** →
+select the `.vsix` file.
+
+### Pointing the extension at the CLI
+
+Workspace attachment controls need an explicit path to the official CLI entry
+(`@aikdna/kdna-cli@0.36.1` or later). Add this to your workspace settings:
 
 ```json
 {
@@ -38,101 +56,53 @@ later):
 }
 ```
 
-The CLI is published; point this setting at the installed CLI entry. An empty
-setting leaves workspace controls disabled rather than falling back to another
-CLI or scanning `PATH`.
+With the setting empty, workspace controls stay disabled. Nothing is resolved
+or launched until the workspace is trusted (VS Code Restricted Mode keeps the
+controls disabled), and no fallback CLI or `PATH` scan is attempted.
 
-Workspace attachment controls are also disabled in VS Code Restricted Mode.
-The CLI setting is declared trust-sensitive, and no configured executable is
-resolved or launched until VS Code reports that the workspace is trusted.
+---
 
-The status bar shows the active workspace's approved identity/version or a
-clear none/disabled/error state. `KDNA: Workspace Attachments` displays exact
-digest, role, scope, and enabled state, then offers disable/enable, switch,
-offline rollback, and relation-only remove. Disable offers an immediate Enable
-action; rollback and remove require confirmation. Attach and switch run the
-official CLI in an interactive terminal so its exact preview and `y/N`
-confirmation remain authoritative.
+## Quick start
 
-Multi-root workspaces are never merged. The user chooses a workspace when none
-is active, and each operation passes that one root to the CLI. The extension
-does not scan a global asset directory, read or parse
-`.kdna/attachments.json` directly, accept passwords, infer entitlement, or
-mutate snapshots itself. It validates the exact CLI's bounded status JSON.
+1. **Open a project view.** Open a JSON project-view file or a Studio-compatible
+   authoring workspace.
+2. **Validate.** Run **KDNA: Validate Project View (Technical)** from the
+   Command Palette. Fix the reported structure and scope diagnostics.
+3. **Pack.** Run **KDNA: Pack Project View (Not Creation Complete)** to produce a
+   `.kdna` container.
+4. **Inspect an asset.** Run **KDNA: Open Local .kdna Asset** and choose a
+   `.kdna` file, or use **KDNA: Preview Structure (Technical)**. Content is
+   projected through the official LoadPlan and Runtime Capsule contracts.
+5. **Check attachments.** Run **KDNA: Workspace Attachments** to see the active
+   workspace's approved identity, digest, role, scope, and enabled state, then
+   disable/enable, switch, rollback offline, or remove the relation. Attach and
+   switch run the official CLI in an interactive terminal so its exact preview
+   and confirmation remain authoritative.
 
-## Current release boundary
+---
 
-- Marketplace currently carries the historical `0.1.0` incumbent. The current
-  `0.2.0` source and its expanded workspace contract have not been published
-  and do not inherit a compatibility claim from that older extension.
-- The current `0.2.0` source is an unreleased evaluation candidate, not a
-  Marketplace release or a stable support commitment.
-- Old direct project-view operations are historical implementation debt,
-  not protocol authority and not a pattern for new integrations.
-- Any future release must bind exact compatible Core/CLI versions and pass the
-  extension's contract, security, packaging, and Marketplace release checks.
+## Status
 
-## Creation and technical project-view operations
-
-The retired parallel project-view creation action is disabled in the `0.2.0`
-source candidate because it generated an obsolete manifest that the current
-Core contract rejects. To create an asset, install an exact compatible
-`@aikdna/kdna-studio-cli` separately and follow that package's creation flow.
-This extension does not invoke it or generate a replacement manifest, does not
-discover a Studio executable from `PATH`, and does not claim that Studio
-integration is already present.
-
-`Validate Project View`, `Pack Project View`, and `Preview Structure` remain
-developer operations. They check or transform technical project-view bytes;
-they do not run the Studio creation gates, do not establish Creation Complete,
-and do not make an asset publication-ready.
-
-## Protocol ownership
-
-The extension does not define container fields, access modes, entitlement
-profiles, crypto, LoadPlan states or Runtime Capsule semantics. Those contracts
-belong to [`aikdna/kdna`](https://github.com/aikdna/kdna). Runtime and authoring
-operations must be delegated to the exact compatible versions of:
-
-- [`@aikdna/kdna-core`](https://github.com/aikdna/kdna)
-- [`@aikdna/kdna-cli`](https://github.com/aikdna/kdna-cli)
-- [`@aikdna/kdna-studio-cli`](https://github.com/aikdna/kdna-studio-cli)
-
-See [docs/ROLE.md](docs/ROLE.md) for the detailed responsibility boundary.
+- **Version:** source candidate `0.2.0`, not yet published to the VS Code
+  Marketplace. The Marketplace incumbent remains the historical `0.1.0`.
+- **Compatibility:** the `0.2.0` candidate routes `.kdna` inspection and loading
+  through the exact published `@aikdna/kdna-core@0.21.0` contracts and the
+  published CLI. It does not inherit a compatibility claim from the older
+  `0.1.0` extension.
+- **Creation:** the retired parallel project-view creation action is disabled in
+  `0.2.0`. This extension does not invoke it or generate a replacement manifest.
+  To create an asset, install `@aikdna/kdna-studio-cli` separately and
+  follow that package's creation flow. `Validate Project View`, `Pack Project
+  View`, and `Preview Structure` remain technical developer operations; they do not run the Studio creation gates and do not make an asset publication-ready.
+- A `.vsix` built from this source is for evaluation only and does not carry the
+  support or compatibility status of a Marketplace release.
 
 ## Development
-
-The source is under exact-coordinate recertification. A local green build is
-candidate evidence, not release approval.
 
 ```bash
 npm ci
 npm test
 ```
-
-## Installing from a .vsix package
-
-The current `0.2.0` extension is not published to the VS Code Marketplace.
-Build a local candidate from the checked-out source before installing it:
-
-```bash
-npm ci
-npm run package
-```
-
-From the command line:
-
-```bash
-code --install-extension kdna-vscode-0.2.0.vsix
-```
-
-Or via the UI: Extensions view → `···` menu → **Install from VSIX...** →
-select the `.vsix` file.
-
-Marketplace publication status is unchanged: `0.1.0` remains the published
-incumbent and `0.2.0` remains unpublished. Any `.vsix` file built here is for
-source evaluation and does not carry the support or compatibility status of a
-Marketplace release.
 
 ## License
 
