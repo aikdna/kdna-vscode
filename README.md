@@ -83,8 +83,9 @@ controls disabled), and no fallback CLI or `PATH` scan is attempted.
 
 ## Status
 
-- **Version:** source candidate `0.2.0`, not yet published to the VS Code
-  Marketplace. The Marketplace incumbent remains the historical `0.1.0`.
+- **Version:** source candidate `0.2.0`, an unreleased evaluation candidate. It
+  is not published to the VS Code Marketplace; the historical `0.1.0` incumbent
+  remains the published release and `0.2.0` remains unpublished.
 - **Compatibility:** the `0.2.0` candidate routes `.kdna` inspection and loading
   through the exact published `@aikdna/kdna-core@0.21.0` contracts and the
   published CLI. It does not inherit a compatibility claim from the older
