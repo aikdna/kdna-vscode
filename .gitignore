@@ -2,6 +2,7 @@ node_modules/
 out/
 dist/
 *.vsix
+releases/
 .env
 .DS_Store
 .vscode-test/
