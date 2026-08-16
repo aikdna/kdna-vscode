@@ -6,9 +6,9 @@
   `inspect → planLoad → load` and consume only Runtime Capsules.
 - Remove direct ZIP/payload consumption and the unused JSZip runtime
   dependency.
-- Bind the unpublished extension candidate to the exact merged KDNA Core
-  `0.21.0` source at `76bbc587ce05f7e575c2373832cc5c9eee9df98a`;
-  the candidate tar is excluded from VSIX output.
+- Bind the extension to the published npm `@aikdna/kdna-core@0.21.0`
+  registry tarball (gitHead `32aa3ff8e633291d4bb9e01de5a70181c8415d93`),
+  consumed from the official registry rather than a local candidate.
 - Surface Core's compact-projection omission status, paths, and counts in the
   editor preview instead of hiding a partial projection.
 - Keep source-project diagnostics separate from packaged Runtime validation,
@@ -28,8 +28,8 @@
 - Declare the CLI setting as trust-sensitive and keep attachment commands and
   process execution disabled in VS Code Restricted Mode.
 
-This is an unpublished Development Preview candidate. No Marketplace package
-or existing release is changed.
+The 0.2.0 extension has not yet been published to the Visual Studio
+Marketplace; no Marketplace listing or existing release is changed.
 
 ## 2026-05-30
 - Updated unit tests to allow KDNA_CARD.json and reports/ entries
