@@ -8,3 +8,10 @@ tsconfig.json
 .vscode/
 fixtures/
 templates/
+releases/
+.github/
+scripts/
+test/
+docs/
+.gitignore
+eslint.config.mjs

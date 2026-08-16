@@ -160,12 +160,11 @@
     "watch": "tsc -watch -p ./",
     "build": "webpack --mode production",
     "lint": "eslint src --ext ts",
-    "test": "node scripts/check-public-current-surface.mjs && node --test test/public-current-surface.test.js && node scripts/verify-core-candidate-contract.mjs && node --test test/core-candidate-gate.test.js && npm run compile && node --test out/test/unit/*.test.js test/release-policy.test.js",
+    "test": "node scripts/check-public-current-surface.mjs && node --test test/public-current-surface.test.js && node scripts/verify-core-registry-contract.mjs && node --test test/core-registry-gate.test.js && npm run compile && node --test out/test/unit/*.test.js test/release-policy.test.js",
     "test:integration": "npm run compile && npm run build && node out/test/runTest.js",
     "package": "vsce package",
     "release:check": "node scripts/verify-release-guard.mjs && node scripts/release-check.js",
-    "test:gate": "node scripts/verify-core-candidate-contract.mjs && node --test test/core-candidate-gate.test.js",
-    "provenance": "node scripts/verify-core-candidate-contract.mjs --core-repo ${KDNA_CORE_REPO:?$KDNA_CORE_REPO must be set} && node --test test/provenance-gate.test.js"
+    "test:gate": "node scripts/verify-core-registry-contract.mjs && node --test test/core-registry-gate.test.js"
   },
   "dependencies": {
     "@aikdna/kdna-core": "0.21.0",
