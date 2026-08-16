@@ -65,12 +65,13 @@ test('current package and changelog form one exact finalizable Marketplace coord
   assert.equal(validateReleaseContext(releaseInput({ pkg, changelog })).version, '0.2.0');
 });
 
-test('public release status separates the published incumbent from the source candidate', () => {
+test('public release status states the published core binding without an unreleased-candidate claim', () => {
   const readme = fs.readFileSync(path.join(ROOT, 'README.md'), 'utf8');
-  assert.match(readme, /historical `0\.1\.0` incumbent/);
-  assert.match(readme, /`0\.2\.0` remains unpublished/);
-  assert.match(readme, /unreleased evaluation candidate/);
-  assert.doesNotMatch(readme, /^The extension is not published to the VS Code Marketplace/m);
+  assert.match(readme, /bound to the published `@aikdna\/kdna-core@0\.21\.0`/);
+  assert.doesNotMatch(readme, /unreleased evaluation candidate/);
+  assert.doesNotMatch(readme, /remains unpublished/);
+  assert.doesNotMatch(readme, /historical `0\.1\.0` incumbent/);
+  assert.doesNotMatch(readme, /not (yet )?published to the VS Code Marketplace/);
   for (const internalNarrative of [
     new RegExp(['owner', 'approved'].join('[- ]'), 'i'),
     new RegExp(['owner', 'reviewed'].join('[- ]'), 'i'),

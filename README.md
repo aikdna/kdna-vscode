@@ -33,8 +33,8 @@ syntax highlighting and runs the exact operations below.
 
 ## Install
 
-The extension is not yet published to the VS Code Marketplace. Install the
-latest `0.2.0` build from a local `.vsix` package:
+Install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=aikdna.kdna-vscode)
+(search "KDNA Developer Tools"), or install a local `.vsix` build:
 
 ```bash
 npm ci
@@ -83,10 +83,9 @@ controls disabled), and no fallback CLI or `PATH` scan is attempted.
 
 ## Status
 
-- **Version:** source candidate `0.2.0`, an unreleased evaluation candidate. It
-  is not published to the VS Code Marketplace; the historical `0.1.0` incumbent
-  remains the published release and `0.2.0` remains unpublished.
-- **Compatibility:** the `0.2.0` candidate routes `.kdna` inspection and loading
+- **Version:** `0.2.0`, bound to the published `@aikdna/kdna-core@0.21.0`. The
+  `0.1.0` line was the earlier GitHub-only release.
+- **Compatibility:** `0.2.0` routes `.kdna` inspection and loading
   through the exact published `@aikdna/kdna-core@0.21.0` contracts and the
   published CLI. It does not inherit a compatibility claim from the older
   `0.1.0` extension.

@@ -44,26 +44,6 @@ jobs:
       - name: Package VSIX
         run: npx vsce package
 
-  candidate-provenance:
-    name: candidate-provenance
-    runs-on: ubuntu-latest
-    needs: []
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/checkout@v6
-        with:
-          repository: aikdna/kdna
-          ref: 06fc87c435a6a34a4b3df8eb18e61b7297ca232a
-          path: ./kdna
-      - uses: actions/setup-node@v6
-        with:
-          node-version: '24.14.0'
-      - run: npm install -g npm@11.17.0 && npm --version && node --version
-      - run: npm ci --ignore-scripts
-      - run: npm run provenance
-        env:
-          KDNA_CORE_REPO: ./kdna
-
   macos-keychain-isolation:
     name: macos-keychain-isolation
     runs-on: macos-14
