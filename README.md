@@ -83,8 +83,9 @@ controls disabled), and no fallback CLI or `PATH` scan is attempted.
 
 ## Status
 
-- **Version:** `0.2.0`, bound to the published `@aikdna/kdna-core@0.21.0`. The
-  `0.1.0` line was the earlier GitHub-only release.
+- **Version:** the Marketplace currently serves `0.1.0` (the earlier
+  GitHub-only release line). This source tree is the `0.2.0` line, a source
+  candidate that is not yet published to the Marketplace, bound to the published `@aikdna/kdna-core@0.21.0`.
 - **Compatibility:** `0.2.0` routes `.kdna` inspection and loading
   through the exact published `@aikdna/kdna-core@0.21.0` contracts and the
   published CLI. It does not inherit a compatibility claim from the older
