@@ -3,13 +3,27 @@ import { lstat, realpath, stat } from 'node:fs/promises';
 import * as path from 'node:path';
 import { promisify } from 'node:util';
 
+import {
+  WORKSPACE_CLI_RECORD_SCHEMA_VERSION,
+  WORKSPACE_CLI_VERSION,
+} from './workspaceCliContract';
+
 const execFileAsync = promisify(execFile);
 
-export const WORKSPACE_CLI_VERSION = '0.36.0';
 const MAX_OUTPUT_BYTES = 16 * 1024 * 1024;
-const MAX_ATTACHMENTS = 64;
+// Aligned with the pinned CLI's own bounds so every record the exact CLI can
+// emit stays parseable while anything broader still fails closed.
+const MAX_ATTACHMENTS = 1024;
+const MAX_SCOPE_TERMS = 256;
+const MAX_TEXT_LENGTH = 4096;
 const ATTACHMENT_ID = /^att_[0-9a-f]{24}$/u;
 const DIGEST = /^sha256:[0-9a-f]{64}$/u;
+const UTC_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u;
+
+export {
+  WORKSPACE_CLI_VERSION,
+  WORKSPACE_CLI_RECORD_SCHEMA_VERSION,
+};
 
 export interface WorkspaceAssetReference {
   id: string;
@@ -18,28 +32,39 @@ export interface WorkspaceAssetReference {
   snapshot: string;
 }
 
+export interface WorkspaceScope {
+  kind: 'workspace';
+  application: 'task_hints' | 'all_workspace';
+  matching_policy: 'open_world_ask' | 'closed_world_skip' | 'all_workspace';
+  authority: 'user_approved_routing_hint';
+  approval_source: 'user_explicit' | 'preview_confirmed';
+  applies_to: string[];
+  does_not_apply_to: string[];
+}
+
 export interface WorkspaceAttachment {
   attachment_id: string;
   asset: WorkspaceAssetReference;
   state: 'enabled' | 'disabled';
   role: string;
-  scope: {
-    kind: 'workspace';
-    applies_to: string[];
-    does_not_apply_to: string[];
-  };
+  scope: WorkspaceScope;
   resolution_policy: 'load_when_clear_ask_when_ambiguous';
   approved_at: string;
   update_policy: 'explicit_switch_only';
   history: Array<{
     asset: WorkspaceAssetReference;
+    role: string;
+    scope: WorkspaceScope;
+    resolution_policy: 'load_when_clear_ask_when_ambiguous';
+    approved_at: string;
+    update_policy: 'explicit_switch_only';
     replaced_at: string;
   }>;
 }
 
 export interface WorkspaceAttachmentRecord {
   document_type: 'kdna.workspace-attachments';
-  schema_version: '0.1.0';
+  schema_version: typeof WORKSPACE_CLI_RECORD_SCHEMA_VERSION;
   workspace: { root_marker: '.kdna/attachments.json' };
   attachments: WorkspaceAttachment[];
 }
@@ -61,14 +86,17 @@ function exactKeys(value: object, expected: string[]): boolean {
     keys.every((key, index) => key === sortedExpected[index]);
 }
 
-function boundedString(value: unknown, maximum = 512): value is string {
-  return typeof value === 'string' && value.length > 0 && value.length <= maximum;
+function boundedText(value: unknown, maximum = MAX_TEXT_LENGTH): value is string {
+  return typeof value === 'string' && value.length > 0 && value.length <= maximum &&
+    value.trim().length > 0;
 }
 
-function stringList(value: unknown): value is string[] {
-  return Array.isArray(value) &&
-    value.length <= 64 &&
-    value.every((item) => boundedString(item, 512));
+function scopeTerms(value: unknown): value is string[] {
+  if (!Array.isArray(value) || value.length > MAX_SCOPE_TERMS) return false;
+  if (!value.every((item) => boundedText(item))) return false;
+  const normalized = value.map((item) =>
+    String(item).normalize('NFKC').trim().replace(/\s+/gu, ' ').toLocaleLowerCase('und'));
+  return new Set(normalized).size === normalized.length;
 }
 
 function validAssetReference(value: unknown): value is WorkspaceAssetReference {
@@ -76,19 +104,70 @@ function validAssetReference(value: unknown): value is WorkspaceAssetReference {
   const asset = value as Record<string, unknown>;
   const digest = String(asset.digest);
   return exactKeys(asset, ['id', 'version', 'digest', 'snapshot']) &&
-    boundedString(asset.id) &&
-    boundedString(asset.version, 128) &&
+    boundedText(asset.id) &&
+    boundedText(asset.version) &&
     DIGEST.test(digest) &&
     asset.snapshot === `assets/sha256-${digest.slice('sha256:'.length)}.kdna`;
 }
 
+function validScope(value: unknown): value is WorkspaceScope {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const scope = value as Record<string, unknown>;
+  if (!exactKeys(scope, [
+    'kind',
+    'application',
+    'matching_policy',
+    'authority',
+    'approval_source',
+    'applies_to',
+    'does_not_apply_to',
+  ])) return false;
+  if (scope.kind !== 'workspace') return false;
+  if (scope.authority !== 'user_approved_routing_hint') return false;
+  if (!['user_explicit', 'preview_confirmed'].includes(String(scope.approval_source))) {
+    return false;
+  }
+  if (!['task_hints', 'all_workspace'].includes(String(scope.application))) return false;
+  if (!['open_world_ask', 'closed_world_skip', 'all_workspace'].includes(
+    String(scope.matching_policy),
+  )) return false;
+  if (!scopeTerms(scope.applies_to) || !scopeTerms(scope.does_not_apply_to)) return false;
+  const application = scope.application;
+  const matchingPolicy = scope.matching_policy;
+  const appliesTo = scope.applies_to as string[];
+  if (application === 'task_hints' &&
+    (appliesTo.length === 0 || matchingPolicy === 'all_workspace')) return false;
+  if (application === 'all_workspace' &&
+    (appliesTo.length !== 0 || matchingPolicy !== 'all_workspace')) return false;
+  return true;
+}
+
+function validTimestamp(value: unknown): boolean {
+  return typeof value === 'string' && UTC_TIMESTAMP.test(value) &&
+    !Number.isNaN(Date.parse(value));
+}
+
 function validHistory(value: unknown): boolean {
-  return Array.isArray(value) && value.length <= 64 && value.every((entry) => {
+  if (!Array.isArray(value) || value.length > MAX_ATTACHMENTS) return false;
+  return value.every((entry) => {
     if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return false;
     const history = entry as Record<string, unknown>;
-    return exactKeys(history, ['asset', 'replaced_at']) &&
+    return exactKeys(history, [
+      'asset',
+      'role',
+      'scope',
+      'resolution_policy',
+      'approved_at',
+      'update_policy',
+      'replaced_at',
+    ]) &&
       validAssetReference(history.asset) &&
-      boundedString(history.replaced_at, 128);
+      boundedText(history.role) &&
+      validScope(history.scope) &&
+      history.resolution_policy === 'load_when_clear_ask_when_ambiguous' &&
+      validTimestamp(history.approved_at) &&
+      history.update_policy === 'explicit_switch_only' &&
+      validTimestamp(history.replaced_at);
   });
 }
 
@@ -107,18 +186,13 @@ function validAttachment(value: unknown): value is WorkspaceAttachment {
     'history',
   ])) return false;
 
-  const scope = item.scope;
   return ATTACHMENT_ID.test(String(item.attachment_id)) &&
     validAssetReference(item.asset) &&
     (item.state === 'enabled' || item.state === 'disabled') &&
-    boundedString(item.role) &&
-    !!scope && typeof scope === 'object' && !Array.isArray(scope) &&
-    exactKeys(scope, ['kind', 'applies_to', 'does_not_apply_to']) &&
-    (scope as Record<string, unknown>).kind === 'workspace' &&
-    stringList((scope as Record<string, unknown>).applies_to) &&
-    stringList((scope as Record<string, unknown>).does_not_apply_to) &&
+    boundedText(item.role) &&
+    validScope(item.scope) &&
     item.resolution_policy === 'load_when_clear_ask_when_ambiguous' &&
-    boundedString(item.approved_at, 128) &&
+    validTimestamp(item.approved_at) &&
     item.update_policy === 'explicit_switch_only' &&
     validHistory(item.history);
 }
@@ -150,13 +224,14 @@ export function parseWorkspaceAttachmentRecord(stdout: string): WorkspaceAttachm
     'attachments',
   ]) &&
     record.document_type === 'kdna.workspace-attachments' &&
-    record.schema_version === '0.1.0' &&
+    record.schema_version === WORKSPACE_CLI_RECORD_SCHEMA_VERSION &&
     !!workspace && typeof workspace === 'object' && !Array.isArray(workspace) &&
     exactKeys(workspace, ['root_marker']) &&
     (workspace as Record<string, unknown>).root_marker === '.kdna/attachments.json' &&
     Array.isArray(attachments) &&
     attachments.length <= MAX_ATTACHMENTS &&
-    attachments.every(validAttachment);
+    attachments.every(validAttachment) &&
+    new Set(attachments.map((attachment) => attachment.attachment_id)).size === attachments.length;
   if (!valid) {
     throw new WorkspaceCliError(
       'workspace_output_invalid',
@@ -187,7 +262,7 @@ export class WorkspaceCliClient {
     if (!path.isAbsolute(this.configuredPath)) {
       throw new WorkspaceCliError(
         'workspace_cli_not_configured',
-        'Configure an absolute path to the exact KDNA CLI 0.36.0 src/cli.js entry.',
+        `Configure an absolute path to the exact KDNA CLI ${WORKSPACE_CLI_VERSION} src/cli.js entry.`,
       );
     }
     let candidate: string;

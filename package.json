@@ -149,7 +149,7 @@
           "type": "string",
           "default": "",
           "scope": "resource",
-          "description": "Absolute path to the exact @aikdna/kdna-cli 0.36.0 src/cli.js entry used for workspace attachment status and controls. Empty disables the candidate workspace integration."
+          "description": "Absolute path to the exact @aikdna/kdna-cli 0.36.1 src/cli.js entry used for workspace attachment status and controls. Any other CLI version fails closed. Empty disables the candidate workspace integration."
         }
       }
     }
@@ -160,7 +160,8 @@
     "watch": "tsc -watch -p ./",
     "build": "webpack --mode production",
     "lint": "eslint src --ext ts",
-    "test": "node scripts/check-public-current-surface.mjs && node --test test/public-current-surface.test.js && node scripts/verify-core-registry-contract.mjs && node --test test/core-registry-gate.test.js && npm run compile && node --test out/test/unit/*.test.js test/release-policy.test.js",
+    "test": "node scripts/check-workspace-cli-contract.mjs && node scripts/check-public-current-surface.mjs && node --test test/public-current-surface.test.js && node scripts/verify-core-registry-contract.mjs && node --test test/core-registry-gate.test.js && npm run compile && node --test out/test/unit/*.test.js test/release-policy.test.js test/cli-contract.test.js",
+    "test:cli-contract": "npm run compile && node --test test/cli-contract.test.js",
     "test:integration": "npm run compile && npm run build && node out/test/runTest.js",
     "package": "vsce package",
     "release:check": "node scripts/verify-release-guard.mjs && node scripts/release-check.js",

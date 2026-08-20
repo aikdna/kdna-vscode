@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { COMMANDS } from '../../constants';
 import {
+  WORKSPACE_CLI_VERSION,
   WorkspaceAttachment,
   WorkspaceAttachmentRecord,
   WorkspaceCliClient,
@@ -106,7 +107,7 @@ export class WorkspaceAttachmentController implements vscode.Disposable {
     const client = this.configuredClient(folder);
     if (client) return client;
     const choice = await vscode.window.showWarningMessage(
-      'KDNA workspace controls are disabled until the exact CLI 0.36.0 src/cli.js entry is configured for this workspace.',
+      `KDNA workspace controls are disabled until the exact CLI ${WORKSPACE_CLI_VERSION} src/cli.js entry is configured for this workspace.`,
       'Open Settings',
     );
     if (choice === 'Open Settings') {

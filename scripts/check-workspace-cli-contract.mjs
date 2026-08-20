@@ -1,0 +1,100 @@
+#!/usr/bin/env node
+
+/**
+ * Workspace-CLI version-contract drift guard.
+ *
+ * The single source of truth is `src/utils/workspaceCliContract.ts`. Every
+ * other surface that names the supported CLI version — source strings,
+ * package.json setting description, README, CHANGELOG, and test fixtures —
+ * must agree with it, and the fail-closed test matrix must keep covering the
+ * neighboring versions. This prevents the historical drift class where the
+ * source required version A, the README promised version B, and fixtures
+ * exercised version C.
+ */
+
+import fs from 'node:fs';
+import path from 'node:path';
+import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const require = createRequire(import.meta.url);
+
+function read(relative) {
+  return fs.readFileSync(path.join(root, relative), 'utf8');
+}
+
+function fail(message) {
+  console.error(message);
+  process.exitCode = 1;
+}
+
+const contractSource = read('src/utils/workspaceCliContract.ts');
+const versionMatch = contractSource.match(/export const WORKSPACE_CLI_VERSION = '([0-9]+\.[0-9]+\.[0-9]+)';/u);
+const schemaMatch = contractSource.match(
+  /export const WORKSPACE_CLI_RECORD_SCHEMA_VERSION = '([0-9]+\.[0-9]+\.[0-9]+)';/u,
+);
+if (!versionMatch) fail('contract file must export WORKSPACE_CLI_VERSION as one exact semver literal');
+if (!schemaMatch) fail('contract file must export WORKSPACE_CLI_RECORD_SCHEMA_VERSION as one exact semver literal');
+if (!versionMatch || !schemaMatch) {
+  console.error('workspace CLI contract is malformed');
+  process.exit(1);
+}
+const version = versionMatch[1];
+const schemaVersion = schemaMatch[1];
+const literal = new RegExp(`'0\\.36\\.[0-9]+'|"0\\.36\\.[0-9]+"`, 'gu');
+
+const clientSource = read('src/utils/workspaceAttachments.ts');
+if (literal.test(clientSource)) {
+  fail('workspaceAttachments.ts hardcodes a CLI version literal; use the contract constant');
+}
+if (!clientSource.includes('WORKSPACE_CLI_VERSION')) {
+  fail('workspaceAttachments.ts must import the contract constant');
+}
+
+const controllerSource = read('src/features/workspace/workspaceAttachmentController.ts');
+if (literal.test(controllerSource)) {
+  fail('workspaceAttachmentController.ts hardcodes a CLI version literal; use the contract constant');
+}
+if (!controllerSource.includes('WORKSPACE_CLI_VERSION')) {
+  fail('workspaceAttachmentController.ts must render the contract constant');
+}
+
+const pkg = JSON.parse(read('package.json'));
+const description = pkg.contributes?.configuration?.properties?.['kdna.workspaceCliEntry']?.description ?? '';
+if (!description.includes(`@aikdna/kdna-cli ${version}`)) {
+  fail(`package.json setting description must name the exact CLI ${version}`);
+}
+
+const readme = read('README.md');
+if (!readme.includes(`@aikdna/kdna-cli@${version}`)) {
+  fail(`README must declare the exact CLI ${version}`);
+}
+if (readme.includes(`@aikdna/kdna-cli@${version} or later`)) {
+  fail('README must not promise a version range without a verified compatibility contract');
+}
+
+const changelog = read('CHANGELOG.md');
+if (!changelog.includes(`exact CLI ${version}`)) {
+  fail(`CHANGELOG must name the exact CLI ${version}`);
+}
+
+const unitTestSource = read('src/test/unit/workspaceAttachments.test.ts');
+if (!unitTestSource.includes('WORKSPACE_CLI_VERSION')) {
+  fail('unit test fixtures must default to the contract constant');
+}
+for (const neighboring of ['0.36.0', '0.36.2', '0.37.0']) {
+  if (!unitTestSource.includes(`'${neighboring}'`)) {
+    fail(`unit tests must keep the fail-closed case for CLI ${neighboring}`);
+  }
+}
+if (!unitTestSource.includes(`schema_version: '${schemaVersion}'`)) {
+  fail(`unit test fixtures must use the exact record schema ${schemaVersion}`);
+}
+
+const contractTestSource = read('test/cli-contract.test.js');
+if (!contractTestSource.includes(`'${version}'`)) {
+  fail('real-CLI contract test must assert the exact contract version');
+}
+
+console.log(`Workspace CLI contract gate passed: exact CLI ${version}, record schema ${schemaVersion}.`);

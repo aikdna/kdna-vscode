@@ -1,0 +1,156 @@
+'use strict';
+
+/**
+ * Real-CLI contract test (25.7.8): the extension client must consume the
+ * exact pinned kdna-cli 0.36.1 output, not a mock.
+ *
+ * Requires KDNA_CLI_ENTRY (absolute path to the pinned CLI's src/cli.js).
+ * The dedicated CI job checks out aikdna/kdna-cli at the pinned commit and
+ * sets the variable. Local runs without the variable skip with an explicit
+ * reason; the CI job never skips.
+ */
+
+const assert = require('node:assert');
+const { execFileSync } = require('node:child_process');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const { after, before, test } = require('node:test');
+
+const {
+  WORKSPACE_CLI_VERSION,
+  WorkspaceCliClient,
+} = require('../out/utils/workspaceAttachments.js');
+
+const CLI_ENTRY = process.env.KDNA_CLI_ENTRY;
+const skip = !CLI_ENTRY
+  ? 'KDNA_CLI_ENTRY is not set; run the dedicated cli-contract CI job or point KDNA_CLI_ENTRY at the pinned CLI src/cli.js.'
+  : false;
+
+const roots = [];
+
+function cli(args, cwd) {
+  return execFileSync(process.execPath, [CLI_ENTRY, ...args], {
+    cwd,
+    encoding: 'utf8',
+    timeout: 60_000,
+    maxBuffer: 16 * 1024 * 1024,
+    shell: false,
+  });
+}
+
+function attachmentIds(workspace) {
+  const record = JSON.parse(cli(['attachments', '--cwd', workspace], workspace));
+  return record.attachments.map((attachment) => attachment.attachment_id);
+}
+
+let workspace;
+let workspaceAssetA;
+let workspaceAssetB;
+let firstId;
+
+before(() => {
+  if (skip) return;
+  workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'kdna-vscode-cli-contract-'));
+  roots.push(workspace);
+  workspaceAssetA = path.join(workspace, 'asset-a.kdna');
+  workspaceAssetB = path.join(workspace, 'asset-b.kdna');
+  cli(['demo', 'judgment', path.join(workspace, 'assets-a')], workspace);
+  cli(['pack', path.join(workspace, 'assets-a'), workspaceAssetA], workspace);
+  cli(['demo', 'minimal', path.join(workspace, 'assets-b')], workspace);
+  cli(['pack', path.join(workspace, 'assets-b'), workspaceAssetB], workspace);
+  cli([
+    'attach',
+    workspaceAssetA,
+    '--cwd',
+    workspace,
+    '--role',
+    'deployment-review',
+    '--applies-to',
+    'deployment',
+    '--does-not-apply-to',
+    'poem',
+    '--yes',
+    '--scope-user-approved',
+  ], workspace);
+  [firstId] = attachmentIds(workspace);
+});
+
+after(() => {
+  for (const root of roots.splice(0)) fs.rmSync(root, { recursive: true, force: true });
+});
+
+test('contract constant and the real CLI agree on the exact version', { skip }, () => {
+  assert.equal(WORKSPACE_CLI_VERSION, '0.36.1');
+  assert.equal(cli(['--version'], workspace).trim(), WORKSPACE_CLI_VERSION);
+});
+
+test('extension client resolves the real CLI through its exact-version gate', { skip }, async () => {
+  const client = new WorkspaceCliClient(CLI_ENTRY);
+  const executable = await client.executable();
+  assert.equal(fs.realpathSync(executable), fs.realpathSync(CLI_ENTRY));
+});
+
+test('extension client consumes the real CLI status record', { skip }, async () => {
+  const client = new WorkspaceCliClient(CLI_ENTRY);
+  const record = await client.status(workspace);
+  assert.ok(record, 'status must return a record');
+  assert.equal(record.schema_version, '0.3.0');
+  assert.equal(record.workspace.root_marker, '.kdna/attachments.json');
+  assert.equal(record.attachments.length, 1);
+  const attachment = record.attachments[0];
+  assert.equal(attachment.attachment_id, firstId);
+  assert.equal(attachment.state, 'enabled');
+  assert.equal(attachment.role, 'deployment-review');
+  assert.equal(attachment.asset.id, 'kdna:example:content-review');
+  assert.match(attachment.asset.digest, /^sha256:[0-9a-f]{64}$/u);
+  assert.match(attachment.asset.version, /^[0-9]+\.[0-9]+\.[0-9]+$/u);
+  assert.equal(attachment.scope.kind, 'workspace');
+  assert.equal(attachment.scope.application, 'task_hints');
+  assert.equal(attachment.scope.matching_policy, 'open_world_ask');
+  assert.equal(attachment.scope.authority, 'user_approved_routing_hint');
+  assert.equal(attachment.scope.approval_source, 'user_explicit');
+  assert.deepEqual(attachment.scope.applies_to, ['deployment']);
+  assert.deepEqual(attachment.scope.does_not_apply_to, ['poem']);
+});
+
+test('extension client drives the real disable/enable lifecycle', { skip }, async () => {
+  const client = new WorkspaceCliClient(CLI_ENTRY);
+  await client.setState(workspace, firstId, 'disabled');
+  let record = await client.status(workspace);
+  assert.equal(record.attachments.find((entry) => entry.attachment_id === firstId).state, 'disabled');
+  await client.setState(workspace, firstId, 'enabled');
+  record = await client.status(workspace);
+  assert.equal(record.attachments.find((entry) => entry.attachment_id === firstId).state, 'enabled');
+});
+
+test('extension client consumes the real switch history and rollback', { skip }, async () => {
+  cli([
+    'switch',
+    firstId,
+    workspaceAssetB,
+    '--cwd',
+    workspace,
+    '--yes',
+    '--scope-user-approved',
+    '--retain-scope',
+  ], workspace);
+  const client = new WorkspaceCliClient(CLI_ENTRY);
+  let record = await client.status(workspace);
+  const switched = record.attachments[0];
+  assert.equal(switched.asset.id, 'kdna:example:deployment-review');
+  assert.equal(switched.history.length, 1);
+  assert.equal(switched.history[0].asset.id, 'kdna:example:content-review');
+  assert.match(switched.history[0].replaced_at, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u);
+
+  await client.rollback(workspace, firstId);
+  record = await client.status(workspace);
+  assert.equal(record.attachments[0].asset.id, 'kdna:example:content-review');
+});
+
+test('extension client removes the real relation', { skip }, async () => {
+  const client = new WorkspaceCliClient(CLI_ENTRY);
+  await client.remove(workspace, firstId);
+  const record = await client.status(workspace);
+  assert.equal(record.attachments.length, 0);
+});

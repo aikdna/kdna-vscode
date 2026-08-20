@@ -47,8 +47,9 @@ select the `.vsix` file.
 
 ### Pointing the extension at the CLI
 
-Workspace attachment controls need an explicit path to the official CLI entry
-(`@aikdna/kdna-cli@0.36.1` or later). Add this to your workspace settings:
+Workspace attachment controls need an explicit path to the official CLI entry:
+the exact published `@aikdna/kdna-cli@0.36.1`. Any other CLI version fails
+closed (no version range is accepted). Add this to your workspace settings:
 
 ```json
 {
