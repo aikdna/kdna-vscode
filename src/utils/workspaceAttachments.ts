@@ -25,6 +25,29 @@ export {
   WORKSPACE_CLI_RECORD_SCHEMA_VERSION,
 };
 
+/**
+ * Single truth for the exact CLI argument vector the "Switch Exact File…" UI
+ * launches. The pinned CLI requires exactly one reviewed policy source;
+ * "Switch Exact File…" asks the user only for the replacement file, so the
+ * switch retains the current attachment's role/scope via --retain-scope.
+ * No automatic approval flags are added: the CLI keeps its interactive
+ * preview and positive confirmation.
+ */
+export function switchAttachmentArgs(
+  attachmentId: string,
+  assetPath: string,
+  workspaceRoot: string,
+): string[] {
+  return [
+    'switch',
+    attachmentId,
+    assetPath,
+    '--cwd',
+    workspaceRoot,
+    '--retain-scope',
+  ];
+}
+
 export interface WorkspaceAssetReference {
   id: string;
   version: string;

@@ -18,6 +18,7 @@ const path = require('node:path');
 const { after, before, test } = require('node:test');
 
 const {
+  switchAttachmentArgs,
   WORKSPACE_CLI_VERSION,
   WorkspaceCliClient,
 } = require('../out/utils/workspaceAttachments.js');
@@ -48,6 +49,7 @@ let workspace;
 let workspaceAssetA;
 let workspaceAssetB;
 let firstId;
+let firstDigest;
 
 before(() => {
   if (skip) return;
@@ -74,6 +76,8 @@ before(() => {
     '--scope-user-approved',
   ], workspace);
   [firstId] = attachmentIds(workspace);
+  firstDigest = JSON.parse(cli(['attachments', '--cwd', workspace], workspace))
+    .attachments[0].asset.digest;
 });
 
 after(() => {
@@ -125,27 +129,80 @@ test('extension client drives the real disable/enable lifecycle', { skip }, asyn
 });
 
 test('extension client consumes the real switch history and rollback', { skip }, async () => {
-  cli([
+  // The exact argument vector the real UI launches. It is the same single
+  // truth the controller uses; this test does not hand-build a divergent
+  // vector. It contains exactly one reviewed policy source (--retain-scope)
+  // and no automatic approval flags: the CLI keeps interactive confirmation.
+  const uiArgs = switchAttachmentArgs(firstId, workspaceAssetB, workspace);
+  assert.deepEqual(uiArgs, [
     'switch',
     firstId,
     workspaceAssetB,
     '--cwd',
     workspace,
-    '--yes',
-    '--scope-user-approved',
     '--retain-scope',
-  ], workspace);
+  ]);
+  assert.equal(uiArgs.filter((argument) => argument === '--retain-scope').length, 1);
+  for (const forbidden of [
+    '--attachment-stdin', '--role', '--applies-to', '--does-not-apply-to',
+    '--all-workspace', '--closed-world-scope',
+    '--yes', '--scope-user-approved', '--consent-digest', '--preview',
+  ]) {
+    assert.equal(uiArgs.includes(forbidden), false);
+  }
+
+  // Test-only automated confirmation appended to the UI base vector so the
+  // non-interactive CI run can pass the CLI's human approval gate; the UI
+  // itself never appends these flags.
+  cli([...uiArgs, '--yes', '--scope-user-approved'], workspace);
+
   const client = new WorkspaceCliClient(CLI_ENTRY);
   let record = await client.status(workspace);
   const switched = record.attachments[0];
   assert.equal(switched.asset.id, 'kdna:example:deployment-review');
+  assert.notEqual(switched.asset.digest, firstDigest);
   assert.equal(switched.history.length, 1);
   assert.equal(switched.history[0].asset.id, 'kdna:example:content-review');
+  assert.equal(switched.history[0].role, 'deployment-review');
+  assert.equal(switched.history[0].scope.application, 'task_hints');
+  assert.deepEqual(switched.history[0].scope.applies_to, ['deployment']);
+  assert.deepEqual(switched.history[0].scope.does_not_apply_to, ['poem']);
+  assert.equal(
+    switched.history[0].resolution_policy,
+    'load_when_clear_ask_when_ambiguous',
+  );
+  assert.equal(switched.history[0].update_policy, 'explicit_switch_only');
   assert.match(switched.history[0].replaced_at, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u);
+  assert.equal(switched.role, 'deployment-review');
+  assert.equal(switched.scope.application, 'task_hints');
+  assert.deepEqual(switched.scope.applies_to, ['deployment']);
 
   await client.rollback(workspace, firstId);
   record = await client.status(workspace);
-  assert.equal(record.attachments[0].asset.id, 'kdna:example:content-review');
+  const rolledBack = record.attachments[0];
+  assert.equal(rolledBack.asset.id, 'kdna:example:content-review');
+  assert.equal(rolledBack.asset.digest, firstDigest);
+  assert.equal(rolledBack.role, 'deployment-review');
+  assert.equal(rolledBack.state, 'enabled');
+  assert.deepEqual(rolledBack.scope.applies_to, ['deployment']);
+  assert.equal(rolledBack.history.length, 0);
+});
+
+test('the legacy policy-less switch vector fails closed with the real CLI', { skip }, () => {
+  assert.throws(
+    () => cli(['switch', firstId, workspaceAssetA, '--cwd', workspace], workspace),
+    (error) => error.status === 2,
+    'the pre-fix UI vector must exit 2 and never reach confirmation',
+  );
+});
+
+test('multiple policy sources fail closed with the real CLI', { skip }, () => {
+  const args = switchAttachmentArgs(firstId, workspaceAssetA, workspace);
+  assert.throws(
+    () => cli([...args, '--role', 'extra-policy'], workspace),
+    (error) => error.status === 2,
+    'more than one reviewed policy source must exit 2',
+  );
 });
 
 test('extension client removes the real relation', { skip }, async () => {

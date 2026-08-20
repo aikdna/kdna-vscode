@@ -6,6 +6,7 @@ import { afterEach, describe, it } from 'node:test';
 
 import {
   parseWorkspaceAttachmentRecord,
+  switchAttachmentArgs,
   WORKSPACE_CLI_VERSION,
   WorkspaceAttachmentRecord,
   WorkspaceCliClient,
@@ -98,6 +99,50 @@ if (Object.prototype.hasOwnProperty.call(responses, args[0])) {
   );
   return { root, executable, log };
 }
+
+describe('workspace switch argument contract (single truth for the real UI)', () => {
+  it('builds exactly one --retain-scope policy source and nothing else', () => {
+    const args = switchAttachmentArgs(
+      'att_0123456789abcdef01234567',
+      '/tmp/ws/replacement.kdna',
+      '/tmp/ws',
+    );
+    assert.deepEqual(args, [
+      'switch',
+      'att_0123456789abcdef01234567',
+      '/tmp/ws/replacement.kdna',
+      '--cwd',
+      '/tmp/ws',
+      '--retain-scope',
+    ]);
+    assert.equal(args.filter((argument) => argument === '--retain-scope').length, 1);
+  });
+
+  it('never adds stdin policy, role/scope arguments, or automatic approval flags', () => {
+    const args = switchAttachmentArgs('att_x', 'asset.kdna', 'ws');
+    for (const forbidden of [
+      '--attachment-stdin',
+      '--role',
+      '--applies-to',
+      '--does-not-apply-to',
+      '--all-workspace',
+      '--closed-world-scope',
+      '--yes',
+      '--scope-user-approved',
+      '--consent-digest',
+      '--preview',
+    ]) {
+      assert.equal(args.includes(forbidden), false, `${forbidden} must not be added`);
+    }
+  });
+
+  it('keeps shell metacharacters as single argv elements', () => {
+    const asset = '/tmp/ws/asset $(touch injected);rm.kdna';
+    const args = switchAttachmentArgs('att_x', asset, '/tmp/ws/space $(evil)');
+    assert.deepEqual(args.slice(0, 3), ['switch', 'att_x', asset]);
+    assert.deepEqual(args.slice(3), ['--cwd', '/tmp/ws/space $(evil)', '--retain-scope']);
+  });
+});
 
 describe('workspace attachment record boundary', () => {
   it('accepts the exact CLI record and carries the full display contract', () => {

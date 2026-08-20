@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { COMMANDS } from '../../constants';
 import {
+  switchAttachmentArgs,
   WORKSPACE_CLI_VERSION,
   WorkspaceAttachment,
   WorkspaceAttachmentRecord,
@@ -359,13 +360,16 @@ export class WorkspaceAttachmentController implements vscode.Disposable {
     if (!asset || asset.scheme !== 'file') return;
     try {
       if (!await this.isCurrentAttachment(folder, client, attachment)) return;
-      await this.launchApprovalTerminal(folder, client, 'KDNA Switch', [
-        'switch',
-        attachment.attachment_id,
-        asset.fsPath,
-        '--cwd',
-        folder.uri.fsPath,
-      ]);
+      await this.launchApprovalTerminal(
+        folder,
+        client,
+        'KDNA Switch',
+        switchAttachmentArgs(
+          attachment.attachment_id,
+          asset.fsPath,
+          folder.uri.fsPath,
+        ),
+      );
     } catch (error) {
       await this.showSafeError(error);
     }

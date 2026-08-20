@@ -59,6 +59,12 @@ if (literal.test(controllerSource)) {
 if (!controllerSource.includes('WORKSPACE_CLI_VERSION')) {
   fail('workspaceAttachmentController.ts must render the contract constant');
 }
+if (!controllerSource.includes('switchAttachmentArgs(')) {
+  fail('workspaceAttachmentController.ts must build switch arguments through switchAttachmentArgs');
+}
+if (/\[\s*'switch'\s*,/u.test(controllerSource)) {
+  fail('workspaceAttachmentController.ts must not hand-build the switch argument vector');
+}
 
 const pkg = JSON.parse(read('package.json'));
 const description = pkg.contributes?.configuration?.properties?.['kdna.workspaceCliEntry']?.description ?? '';
@@ -83,6 +89,9 @@ const unitTestSource = read('src/test/unit/workspaceAttachments.test.ts');
 if (!unitTestSource.includes('WORKSPACE_CLI_VERSION')) {
   fail('unit test fixtures must default to the contract constant');
 }
+if (!unitTestSource.includes('switchAttachmentArgs(')) {
+  fail('unit tests must exercise the single switch argument builder');
+}
 for (const neighboring of ['0.36.0', '0.36.2', '0.37.0']) {
   if (!unitTestSource.includes(`'${neighboring}'`)) {
     fail(`unit tests must keep the fail-closed case for CLI ${neighboring}`);
@@ -95,6 +104,9 @@ if (!unitTestSource.includes(`schema_version: '${schemaVersion}'`)) {
 const contractTestSource = read('test/cli-contract.test.js');
 if (!contractTestSource.includes(`'${version}'`)) {
   fail('real-CLI contract test must assert the exact contract version');
+}
+if (!contractTestSource.includes('switchAttachmentArgs(')) {
+  fail('real-CLI contract test must consume the single switch argument builder');
 }
 
 console.log(`Workspace CLI contract gate passed: exact CLI ${version}, record schema ${schemaVersion}.`);
