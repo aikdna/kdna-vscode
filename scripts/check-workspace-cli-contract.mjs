@@ -59,8 +59,8 @@ if (literal.test(controllerSource)) {
 if (!controllerSource.includes('WORKSPACE_CLI_VERSION')) {
   fail('workspaceAttachmentController.ts must render the contract constant');
 }
-if (!controllerSource.includes('switchAttachmentArgs(')) {
-  fail('workspaceAttachmentController.ts must build switch arguments through switchAttachmentArgs');
+if (!controllerSource.includes('switchPreview(') || !controllerSource.includes('switchApproved(')) {
+  fail('workspaceAttachmentController.ts must run switch through the single-truth client preview/approved flow');
 }
 if (/\[\s*'switch'\s*,/u.test(controllerSource)) {
   fail('workspaceAttachmentController.ts must not hand-build the switch argument vector');
@@ -89,8 +89,10 @@ const unitTestSource = read('src/test/unit/workspaceAttachments.test.ts');
 if (!unitTestSource.includes('WORKSPACE_CLI_VERSION')) {
   fail('unit test fixtures must default to the contract constant');
 }
-if (!unitTestSource.includes('switchAttachmentArgs(')) {
-  fail('unit tests must exercise the single switch argument builder');
+if (!unitTestSource.includes('switchAttachmentArgs(') ||
+    !unitTestSource.includes('switchPreviewArgs(') ||
+    !unitTestSource.includes('switchApprovedArgs(')) {
+  fail('unit tests must exercise the single switch argument builders');
 }
 for (const neighboring of ['0.36.0', '0.36.2', '0.37.0']) {
   if (!unitTestSource.includes(`'${neighboring}'`)) {
@@ -105,8 +107,10 @@ const contractTestSource = read('test/cli-contract.test.js');
 if (!contractTestSource.includes(`'${version}'`)) {
   fail('real-CLI contract test must assert the exact contract version');
 }
-if (!contractTestSource.includes('switchAttachmentArgs(')) {
-  fail('real-CLI contract test must consume the single switch argument builder');
+if (!contractTestSource.includes('switchAttachmentArgs(') ||
+    !contractTestSource.includes('switchPreviewArgs(') ||
+    !contractTestSource.includes('switchApprovedArgs(')) {
+  fail('real-CLI contract test must consume the single switch argument builders');
 }
 
 console.log(`Workspace CLI contract gate passed: exact CLI ${version}, record schema ${schemaVersion}.`);

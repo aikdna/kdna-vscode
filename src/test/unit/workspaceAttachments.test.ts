@@ -5,8 +5,11 @@ import * as path from 'node:path';
 import { afterEach, describe, it } from 'node:test';
 
 import {
+  parseSwitchPreview,
   parseWorkspaceAttachmentRecord,
+  switchApprovedArgs,
   switchAttachmentArgs,
+  switchPreviewArgs,
   WORKSPACE_CLI_VERSION,
   WorkspaceAttachmentRecord,
   WorkspaceCliClient,
@@ -87,8 +90,11 @@ if (process.env.KDNA_VSCODE_TEST_LOG) {
   fs.appendFileSync(process.env.KDNA_VSCODE_TEST_LOG, JSON.stringify(args) + '\\n');
 }
 const responses = ${JSON.stringify(responseMap)};
-if (Object.prototype.hasOwnProperty.call(responses, args[0])) {
-  process.stdout.write(responses[args[0]]);
+let responseKey = args[0];
+if (args[0] === 'switch' && args.includes('--preview')) responseKey = 'switch-preview';
+if (args[0] === 'switch' && args.includes('--yes')) responseKey = 'switch-approved';
+if (Object.prototype.hasOwnProperty.call(responses, responseKey)) {
+  process.stdout.write(responses[responseKey]);
 } else if (args[0] === 'attachments') {
   process.stdout.write(JSON.stringify(${JSON.stringify(attachmentRecord())}) + '\\n');
 } else {
@@ -136,11 +142,131 @@ describe('workspace switch argument contract (single truth for the real UI)', ()
     }
   });
 
+  it('derives the preview and approved vectors from the same base', () => {
+    const base = switchAttachmentArgs('att_x', 'asset.kdna', 'ws');
+    assert.deepEqual(switchPreviewArgs('att_x', 'asset.kdna', 'ws'), [...base, '--preview']);
+    assert.deepEqual(
+      switchApprovedArgs('att_x', 'asset.kdna', 'ws'),
+      [...base, '--yes', '--scope-user-approved'],
+    );
+    const approved = switchApprovedArgs('att_x', 'asset.kdna', 'ws');
+    assert.equal(approved.filter((argument) => argument === '--retain-scope').length, 1);
+    assert.equal(approved.includes('--attachment-stdin'), false);
+    assert.equal(approved.includes('--role'), false);
+    assert.equal(approved.includes('--applies-to'), false);
+    assert.equal(approved.includes('--does-not-apply-to'), false);
+    assert.equal(approved.includes('--consent-digest'), false);
+    assert.equal(switchPreviewArgs('att_x', 'asset.kdna', 'ws').includes('--yes'), false);
+  });
+
   it('keeps shell metacharacters as single argv elements', () => {
     const asset = '/tmp/ws/asset $(touch injected);rm.kdna';
     const args = switchAttachmentArgs('att_x', asset, '/tmp/ws/space $(evil)');
     assert.deepEqual(args.slice(0, 3), ['switch', 'att_x', asset]);
     assert.deepEqual(args.slice(3), ['--cwd', '/tmp/ws/space $(evil)', '--retain-scope']);
+  });
+});
+
+describe('switch preview parsing boundary', () => {
+  function switchPreviewEnvelope(): unknown {
+    return {
+      operation: 'switch',
+      mode: 'preview',
+      workspace_root: '.',
+      confirmation_required: true,
+      preview: {
+        operation: 'switch',
+        consent_digest: `sha256:${'b'.repeat(64)}`,
+        workspace_boundary: { kind: 'exact_workspace', root: '.' },
+        attachment_id: 'att_0123456789abcdef01234567',
+        old_attachment: {
+          asset: {
+            id: 'kdna:test:old',
+            version: '1.0.0',
+            digest: `sha256:${'a'.repeat(64)}`,
+            snapshot: `assets/sha256-${'a'.repeat(64)}.kdna`,
+          },
+          role: 'deployment-review',
+          scope: {
+            kind: 'workspace',
+            application: 'task_hints',
+            matching_policy: 'open_world_ask',
+            authority: 'user_approved_routing_hint',
+            approval_source: 'user_explicit',
+            applies_to: ['deployment'],
+            does_not_apply_to: ['poem'],
+          },
+          resolution_policy: 'load_when_clear_ask_when_ambiguous',
+          approved_at: '2026-07-22T00:00:00.000Z',
+          update_policy: 'explicit_switch_only',
+        },
+        new_attachment: {
+          asset: {
+            id: 'kdna:test:new',
+            version: '1.0.0',
+            digest: `sha256:${'c'.repeat(64)}`,
+            snapshot: `assets/sha256-${'c'.repeat(64)}.kdna`,
+          },
+          state: 'enabled',
+          role: 'deployment-review',
+          scope: {
+            kind: 'workspace',
+            application: 'task_hints',
+            matching_policy: 'open_world_ask',
+            authority: 'user_approved_routing_hint',
+            approval_source: 'preview_confirmed',
+            applies_to: ['deployment'],
+            does_not_apply_to: ['poem'],
+          },
+          resolution_policy: 'load_when_clear_ask_when_ambiguous',
+          approved_at: '2026-07-22T00:00:01.000Z',
+          update_policy: 'explicit_switch_only',
+        },
+        authorization: {
+          old: { access: 'public', required_before_load: false, load_plan_state: 'ready' },
+          new: { access: 'public', required_before_load: false, load_plan_state: 'ready' },
+        },
+        scope_contract: {
+          inherited_without_review: false,
+          asset_declared_preload_boundary: 'not_available_in_current_manifest_contract',
+          runtime_boundary_remains_authoritative: true,
+        },
+      },
+    };
+  }
+
+  it('accepts the exact real-CLI switch preview payload', () => {
+    const parsed = parseSwitchPreview(JSON.stringify(switchPreviewEnvelope()));
+    assert.equal(parsed.operation, 'switch');
+    assert.equal(parsed.attachment_id, 'att_0123456789abcdef01234567');
+    assert.equal(parsed.new_attachment.asset.id, 'kdna:test:new');
+    assert.equal(parsed.old_attachment.asset.id, 'kdna:test:old');
+    assert.equal(parsed.new_attachment.role, 'deployment-review');
+    assert.equal(parsed.authorization.new.load_plan_state, 'ready');
+    assert.equal(parsed.scope_contract.runtime_boundary_remains_authoritative, true);
+  });
+
+  it('rejects malformed, extended, and inconsistent previews', () => {
+    assert.throws(() => parseSwitchPreview('{'));
+    const extended = switchPreviewEnvelope();
+    (extended as Record<string, unknown>).extra = true;
+    assert.throws(() => parseSwitchPreview(JSON.stringify(extended)));
+    const extendedInner = switchPreviewEnvelope() as Record<string, unknown>;
+    (extendedInner.preview as Record<string, unknown>).extra = true;
+    assert.throws(() => parseSwitchPreview(JSON.stringify(extendedInner)));
+    const badDigest = switchPreviewEnvelope();
+    (badDigest as Record<string, unknown>).preview = {
+      ...(badDigest as Record<string, unknown>).preview as object,
+      consent_digest: `sha256:${'z'.repeat(64)}`,
+    };
+    assert.throws(() => parseSwitchPreview(JSON.stringify(badDigest)));
+    const inconsistent = switchPreviewEnvelope();
+    ((inconsistent as Record<string, unknown>).preview as Record<string, unknown>)
+      .new_attachment = { state: 'enabled' };
+    assert.throws(() => parseSwitchPreview(JSON.stringify(inconsistent)));
+    const missingConfirmation = switchPreviewEnvelope();
+    (missingConfirmation as Record<string, unknown>).confirmation_required = false;
+    assert.throws(() => parseSwitchPreview(JSON.stringify(missingConfirmation)));
   });
 });
 
@@ -383,6 +509,121 @@ describe('workspace CLI process boundary', () => {
     fs.writeFileSync(path.join(legacyWorkspace, '.kdna', 'attachments.json'), '{}');
     await assert.rejects(
       new WorkspaceCliClient(legacy.executable).status(legacyWorkspace),
+      (error: unknown) => error instanceof WorkspaceCliError &&
+        error.code === 'workspace_output_invalid',
+    );
+  });
+
+  it('consumes the switch preview and approved vectors through the client', async () => {
+    const previewEnvelope = JSON.stringify({
+      operation: 'switch',
+      mode: 'preview',
+      workspace_root: '.',
+      confirmation_required: true,
+      preview: {
+        operation: 'switch',
+        consent_digest: `sha256:${'b'.repeat(64)}`,
+        workspace_boundary: { kind: 'exact_workspace', root: '.' },
+        attachment_id: 'att_0123456789abcdef01234567',
+        old_attachment: {
+          asset: {
+            id: 'kdna:test:old',
+            version: '1.0.0',
+            digest: `sha256:${'a'.repeat(64)}`,
+            snapshot: `assets/sha256-${'a'.repeat(64)}.kdna`,
+          },
+          role: 'deployment-review',
+          scope: {
+            kind: 'workspace',
+            application: 'task_hints',
+            matching_policy: 'open_world_ask',
+            authority: 'user_approved_routing_hint',
+            approval_source: 'user_explicit',
+            applies_to: ['deployment'],
+            does_not_apply_to: [],
+          },
+          resolution_policy: 'load_when_clear_ask_when_ambiguous',
+          approved_at: '2026-07-22T00:00:00.000Z',
+          update_policy: 'explicit_switch_only',
+        },
+        new_attachment: {
+          asset: {
+            id: 'kdna:test:new',
+            version: '1.0.0',
+            digest: `sha256:${'c'.repeat(64)}`,
+            snapshot: `assets/sha256-${'c'.repeat(64)}.kdna`,
+          },
+          state: 'enabled',
+          role: 'deployment-review',
+          scope: {
+            kind: 'workspace',
+            application: 'task_hints',
+            matching_policy: 'open_world_ask',
+            authority: 'user_approved_routing_hint',
+            approval_source: 'preview_confirmed',
+            applies_to: ['deployment'],
+            does_not_apply_to: [],
+          },
+          resolution_policy: 'load_when_clear_ask_when_ambiguous',
+          approved_at: '2026-07-22T00:00:01.000Z',
+          update_policy: 'explicit_switch_only',
+        },
+        authorization: {
+          old: { access: 'public', required_before_load: false, load_plan_state: 'ready' },
+          new: { access: 'public', required_before_load: false, load_plan_state: 'ready' },
+        },
+        scope_contract: {
+          inherited_without_review: false,
+          asset_declared_preload_boundary: 'not_available_in_current_manifest_contract',
+          runtime_boundary_remains_authoritative: true,
+        },
+      },
+    });
+    const fake = fakeCli(WORKSPACE_CLI_VERSION, {
+      'switch-preview': previewEnvelope,
+      'switch-approved': JSON.stringify({ operation: 'switch', switched: true }),
+    });
+    const workspace = path.join(fake.root, 'ws');
+    fs.mkdirSync(path.join(workspace, '.kdna'), { recursive: true });
+    fs.writeFileSync(path.join(workspace, '.kdna', 'attachments.json'), '{}');
+    process.env.KDNA_VSCODE_TEST_LOG = fake.log;
+    const client = new WorkspaceCliClient(fake.executable);
+
+    const preview = await client.switchPreview(
+      workspace,
+      'att_0123456789abcdef01234567',
+      '/tmp/replacement.kdna',
+    );
+    assert.equal(preview.new_attachment.asset.id, 'kdna:test:new');
+    const approved = await client.switchApproved(
+      workspace,
+      'att_0123456789abcdef01234567',
+      '/tmp/replacement.kdna',
+    );
+    assert.deepEqual(approved, { operation: 'switch', switched: true });
+
+    const safeWorkspace = fs.realpathSync(workspace);
+    const invocations = fs.readFileSync(fake.log, 'utf8')
+      .trim()
+      .split('\n')
+      .map((line) => JSON.parse(line));
+    assert.deepEqual(invocations, [
+      ['switch', 'att_0123456789abcdef01234567', '/tmp/replacement.kdna', '--cwd', safeWorkspace, '--retain-scope', '--preview'],
+      ['switch', 'att_0123456789abcdef01234567', '/tmp/replacement.kdna', '--cwd', safeWorkspace, '--retain-scope', '--yes', '--scope-user-approved'],
+    ]);
+  });
+
+  it('fails closed when the CLI returns an invalid switch preview', async () => {
+    const broken = fakeCli(WORKSPACE_CLI_VERSION, { 'switch-preview': '{not-json' });
+    const workspace = path.join(broken.root, 'ws');
+    fs.mkdirSync(path.join(workspace, '.kdna'), { recursive: true });
+    fs.writeFileSync(path.join(workspace, '.kdna', 'attachments.json'), '{}');
+    await assert.rejects(
+      new WorkspaceCliClient(broken.executable).switchPreview(
+        workspace,
+        'att_0123456789abcdef01234567',
+        '/tmp/replacement.kdna',
+      ),
       (error: unknown) => error instanceof WorkspaceCliError &&
         error.code === 'workspace_output_invalid',
     );

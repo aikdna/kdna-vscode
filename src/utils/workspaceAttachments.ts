@@ -48,6 +48,41 @@ export function switchAttachmentArgs(
   ];
 }
 
+/**
+ * Preview variant of the single switch vector: the CLI prints the exact
+ * preview payload and performs no write.
+ */
+export function switchPreviewArgs(
+  attachmentId: string,
+  assetPath: string,
+  workspaceRoot: string,
+): string[] {
+  return [...switchAttachmentArgs(attachmentId, assetPath, workspaceRoot), '--preview'];
+}
+
+/**
+ * Approved-execution variant. The CLI 0.36.1 interactive confirmation cannot
+ * complete inside a VS Code terminal (its synchronous stdin read fails with
+ * EAGAIN on the non-blocking terminal pty — verified against the pinned CLI
+ * in a real Extension Host), and its cross-invocation consent digest embeds
+ * the per-invocation approved_at timestamp, so the preview/digest split can
+ * never match across two runs. The UI therefore shows the CLI's real preview
+ * payload and requires an explicit modal confirmation; only after that does
+ * it execute this vector, which tells the CLI the user already approved the
+ * scope in the Host UI (recorded approval_source: user_explicit).
+ */
+export function switchApprovedArgs(
+  attachmentId: string,
+  assetPath: string,
+  workspaceRoot: string,
+): string[] {
+  return [
+    ...switchAttachmentArgs(attachmentId, assetPath, workspaceRoot),
+    '--yes',
+    '--scope-user-approved',
+  ];
+}
+
 export interface WorkspaceAssetReference {
   id: string;
   version: string;
@@ -90,6 +125,39 @@ export interface WorkspaceAttachmentRecord {
   schema_version: typeof WORKSPACE_CLI_RECORD_SCHEMA_VERSION;
   workspace: { root_marker: '.kdna/attachments.json' };
   attachments: WorkspaceAttachment[];
+}
+
+export interface SwitchPreview {
+  operation: 'switch';
+  consent_digest: string;
+  workspace_boundary: { kind: 'exact_workspace'; root: string };
+  attachment_id: string;
+  old_attachment: {
+    asset: WorkspaceAssetReference;
+    role: string;
+    scope: WorkspaceScope;
+    resolution_policy: 'load_when_clear_ask_when_ambiguous';
+    approved_at: string;
+    update_policy: 'explicit_switch_only';
+  };
+  new_attachment: {
+    asset: WorkspaceAssetReference;
+    state: 'enabled' | 'disabled';
+    role: string;
+    scope: WorkspaceScope;
+    resolution_policy: 'load_when_clear_ask_when_ambiguous';
+    approved_at: string;
+    update_policy: 'explicit_switch_only';
+  };
+  authorization: {
+    old: { access: string; required_before_load: boolean; load_plan_state: string };
+    new: { access: string; required_before_load: boolean; load_plan_state: string };
+  };
+  scope_contract: {
+    inherited_without_review: boolean;
+    asset_declared_preload_boundary: string;
+    runtime_boundary_remains_authoritative: boolean;
+  };
 }
 
 export class WorkspaceCliError extends Error {
@@ -275,6 +343,95 @@ function safeJson(stdout: string): unknown {
   }
 }
 
+function validAuthorizationFacts(value: unknown): boolean {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const facts = value as Record<string, unknown>;
+  return exactKeys(facts, ['access', 'required_before_load', 'load_plan_state']) &&
+    boundedText(facts.access) &&
+    typeof facts.required_before_load === 'boolean' &&
+    boundedText(facts.load_plan_state);
+}
+
+function validSwitchPreviewEnvelope(value: unknown): value is SwitchPreview {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const envelope = value as Record<string, unknown>;
+  if (!exactKeys(envelope, ['operation', 'mode', 'workspace_root', 'confirmation_required', 'preview'])) {
+    return false;
+  }
+  if (envelope.operation !== 'switch' || envelope.mode !== 'preview' ||
+    envelope.confirmation_required !== true || !boundedText(envelope.workspace_root)) {
+    return false;
+  }
+  const preview = envelope.preview;
+  if (!preview || typeof preview !== 'object' || Array.isArray(preview)) return false;
+  const facts = preview as Record<string, unknown>;
+  if (!exactKeys(facts, [
+    'operation',
+    'consent_digest',
+    'workspace_boundary',
+    'attachment_id',
+    'old_attachment',
+    'new_attachment',
+    'authorization',
+    'scope_contract',
+  ])) return false;
+  if (facts.operation !== 'switch' ||
+    typeof facts.consent_digest !== 'string' ||
+    !/^sha256:[0-9a-f]{64}$/u.test(facts.consent_digest) ||
+    !ATTACHMENT_ID.test(String(facts.attachment_id))) return false;
+  const boundary = facts.workspace_boundary;
+  if (!boundary || typeof boundary !== 'object' || Array.isArray(boundary) ||
+    !exactKeys(boundary, ['kind', 'root']) ||
+    (boundary as Record<string, unknown>).kind !== 'exact_workspace' ||
+    !boundedText((boundary as Record<string, unknown>).root)) return false;
+  for (const attachmentKey of ['old_attachment', 'new_attachment']) {
+    const attachment = facts[attachmentKey];
+    if (!attachment || typeof attachment !== 'object' || Array.isArray(attachment)) return false;
+    const entry = attachment as Record<string, unknown>;
+    const expectedKeys = attachmentKey === 'new_attachment'
+      ? ['asset', 'state', 'role', 'scope', 'resolution_policy', 'approved_at', 'update_policy']
+      : ['asset', 'role', 'scope', 'resolution_policy', 'approved_at', 'update_policy'];
+    if (!exactKeys(entry, expectedKeys) ||
+      !validAssetReference(entry.asset) ||
+      !boundedText(entry.role) ||
+      !validScope(entry.scope) ||
+      entry.resolution_policy !== 'load_when_clear_ask_when_ambiguous' ||
+      !validTimestamp(entry.approved_at) ||
+      entry.update_policy !== 'explicit_switch_only' ||
+      (attachmentKey === 'new_attachment' &&
+        entry.state !== 'enabled' && entry.state !== 'disabled')) return false;
+  }
+  const authorization = facts.authorization;
+  if (!authorization || typeof authorization !== 'object' || Array.isArray(authorization) ||
+    !exactKeys(authorization, ['old', 'new']) ||
+    !validAuthorizationFacts((authorization as Record<string, unknown>).old) ||
+    !validAuthorizationFacts((authorization as Record<string, unknown>).new)) return false;
+  const contract = facts.scope_contract;
+  if (!contract || typeof contract !== 'object' || Array.isArray(contract) ||
+    !exactKeys(contract, [
+      'inherited_without_review',
+      'asset_declared_preload_boundary',
+      'runtime_boundary_remains_authoritative',
+    ]) ||
+    (contract as Record<string, unknown>).inherited_without_review !== false ||
+    !boundedText((contract as Record<string, unknown>).asset_declared_preload_boundary) ||
+    (contract as Record<string, unknown>).runtime_boundary_remains_authoritative !== true) {
+    return false;
+  }
+  return true;
+}
+
+export function parseSwitchPreview(stdout: string): SwitchPreview {
+  const value = safeJson(stdout);
+  if (!validSwitchPreviewEnvelope(value)) {
+    throw new WorkspaceCliError(
+      'workspace_output_invalid',
+      'The configured KDNA CLI returned an invalid switch preview.',
+    );
+  }
+  return (value as unknown as { preview: SwitchPreview }).preview;
+}
+
 export class WorkspaceCliClient {
   private resolvedPath: string | null = null;
 
@@ -331,6 +488,33 @@ export class WorkspaceCliClient {
     this.assertAttachmentId(attachmentId);
     const safeRoot = await this.requiredWorkspaceRoot(workspaceRoot);
     return safeJson(await this.run(['rollback', attachmentId, '--cwd', safeRoot], safeRoot));
+  }
+
+  async switchPreview(
+    workspaceRoot: string,
+    attachmentId: string,
+    assetPath: string,
+  ): Promise<SwitchPreview> {
+    this.assertAttachmentId(attachmentId);
+    const safeRoot = await this.requiredWorkspaceRoot(workspaceRoot);
+    const stdout = await this.run(
+      switchPreviewArgs(attachmentId, assetPath, safeRoot),
+      safeRoot,
+    );
+    return parseSwitchPreview(stdout);
+  }
+
+  async switchApproved(
+    workspaceRoot: string,
+    attachmentId: string,
+    assetPath: string,
+  ): Promise<unknown> {
+    this.assertAttachmentId(attachmentId);
+    const safeRoot = await this.requiredWorkspaceRoot(workspaceRoot);
+    return safeJson(await this.run(
+      switchApprovedArgs(attachmentId, assetPath, safeRoot),
+      safeRoot,
+    ));
   }
 
   async remove(workspaceRoot: string, attachmentId: string): Promise<unknown> {

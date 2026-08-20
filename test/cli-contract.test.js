@@ -18,7 +18,10 @@ const path = require('node:path');
 const { after, before, test } = require('node:test');
 
 const {
+  parseSwitchPreview,
+  switchApprovedArgs,
   switchAttachmentArgs,
+  switchPreviewArgs,
   WORKSPACE_CLI_VERSION,
   WorkspaceCliClient,
 } = require('../out/utils/workspaceAttachments.js');
@@ -128,11 +131,13 @@ test('extension client drives the real disable/enable lifecycle', { skip }, asyn
   assert.equal(record.attachments.find((entry) => entry.attachment_id === firstId).state, 'enabled');
 });
 
-test('extension client consumes the real switch history and rollback', { skip }, async () => {
-  // The exact argument vector the real UI launches. It is the same single
-  // truth the controller uses; this test does not hand-build a divergent
-  // vector. It contains exactly one reviewed policy source (--retain-scope)
-  // and no automatic approval flags: the CLI keeps interactive confirmation.
+test('extension client consumes the real switch preview, approved execution, and rollback', { skip }, async () => {
+  // Single truth: the vectors below are the exact builders the controller
+  // uses. The UI base vector contains exactly one reviewed policy source
+  // (--retain-scope) and no approval flags; the approved variant appends only
+  // --yes --scope-user-approved, which the CLI records as user_explicit —
+  // the Host-confirmed path used because CLI 0.36.1's interactive read and
+  // cross-invocation consent digest cannot complete inside a VS Code terminal.
   const uiArgs = switchAttachmentArgs(firstId, workspaceAssetB, workspace);
   assert.deepEqual(uiArgs, [
     'switch',
@@ -142,24 +147,44 @@ test('extension client consumes the real switch history and rollback', { skip },
     workspace,
     '--retain-scope',
   ]);
+  assert.deepEqual(switchPreviewArgs(firstId, workspaceAssetB, workspace), [
+    ...uiArgs,
+    '--preview',
+  ]);
+  assert.deepEqual(switchApprovedArgs(firstId, workspaceAssetB, workspace), [
+    ...uiArgs,
+    '--yes',
+    '--scope-user-approved',
+  ]);
   assert.equal(uiArgs.filter((argument) => argument === '--retain-scope').length, 1);
   for (const forbidden of [
     '--attachment-stdin', '--role', '--applies-to', '--does-not-apply-to',
-    '--all-workspace', '--closed-world-scope',
-    '--yes', '--scope-user-approved', '--consent-digest', '--preview',
+    '--all-workspace', '--closed-world-scope', '--consent-digest',
   ]) {
     assert.equal(uiArgs.includes(forbidden), false);
+    assert.equal(switchApprovedArgs(firstId, workspaceAssetB, workspace).includes(forbidden), false);
   }
 
-  // Test-only automated confirmation appended to the UI base vector so the
-  // non-interactive CI run can pass the CLI's human approval gate; the UI
-  // itself never appends these flags.
-  cli([...uiArgs, '--yes', '--scope-user-approved'], workspace);
-
   const client = new WorkspaceCliClient(CLI_ENTRY);
+
+  // Real CLI preview through the client parser.
+  const preview = await client.switchPreview(workspace, firstId, workspaceAssetB);
+  assert.equal(preview.operation, 'switch');
+  assert.equal(preview.attachment_id, firstId);
+  assert.equal(preview.old_attachment.asset.id, 'kdna:example:content-review');
+  assert.equal(preview.new_attachment.asset.id, 'kdna:example:deployment-review');
+  assert.equal(preview.new_attachment.role, 'deployment-review');
+  assert.equal(preview.new_attachment.scope.application, 'task_hints');
+  assert.deepEqual(preview.new_attachment.scope.applies_to, ['deployment']);
+  assert.match(preview.consent_digest, /^sha256:[0-9a-f]{64}$/u);
+
+  // Approved execution (the UI executes this only after its modal
+  // confirmation of the exact preview payload).
+  await client.switchApproved(workspace, firstId, workspaceAssetB);
   let record = await client.status(workspace);
   const switched = record.attachments[0];
   assert.equal(switched.asset.id, 'kdna:example:deployment-review');
+  assert.equal(switched.asset.digest, preview.new_attachment.asset.digest);
   assert.notEqual(switched.asset.digest, firstDigest);
   assert.equal(switched.history.length, 1);
   assert.equal(switched.history[0].asset.id, 'kdna:example:content-review');
@@ -176,6 +201,7 @@ test('extension client consumes the real switch history and rollback', { skip },
   assert.equal(switched.role, 'deployment-review');
   assert.equal(switched.scope.application, 'task_hints');
   assert.deepEqual(switched.scope.applies_to, ['deployment']);
+  assert.equal(switched.scope.approval_source, 'user_explicit');
 
   await client.rollback(workspace, firstId);
   record = await client.status(workspace);
@@ -186,6 +212,18 @@ test('extension client consumes the real switch history and rollback', { skip },
   assert.equal(rolledBack.state, 'enabled');
   assert.deepEqual(rolledBack.scope.applies_to, ['deployment']);
   assert.equal(rolledBack.history.length, 0);
+});
+
+test('a drifted or missing replacement asset fails closed without partial writes', { skip }, async () => {
+  const client = new WorkspaceCliClient(CLI_ENTRY);
+  const missing = path.join(workspace, 'does-not-exist.kdna');
+  await assert.rejects(
+    () => client.switchApproved(workspace, firstId, missing),
+    (error) => error instanceof Error && /workspace/.test(error.message),
+  );
+  const record = await client.status(workspace);
+  assert.equal(record.attachments[0].asset.id, 'kdna:example:content-review');
+  assert.equal(record.attachments[0].history.length, 0);
 });
 
 test('the legacy policy-less switch vector fails closed with the real CLI', { skip }, () => {

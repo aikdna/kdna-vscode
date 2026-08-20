@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
 import { COMMANDS } from '../../constants';
 import {
-  switchAttachmentArgs,
   WORKSPACE_CLI_VERSION,
   WorkspaceAttachment,
   WorkspaceAttachmentRecord,
@@ -360,15 +359,49 @@ export class WorkspaceAttachmentController implements vscode.Disposable {
     if (!asset || asset.scheme !== 'file') return;
     try {
       if (!await this.isCurrentAttachment(folder, client, attachment)) return;
-      await this.launchApprovalTerminal(
-        folder,
-        client,
-        'KDNA Switch',
-        switchAttachmentArgs(
-          attachment.attachment_id,
-          asset.fsPath,
-          folder.uri.fsPath,
-        ),
+      const preview = await client.switchPreview(
+        folder.uri.fsPath,
+        attachment.attachment_id,
+        asset.fsPath,
+      );
+      const confirmation = await vscode.window.showWarningMessage(
+        [
+          `Switch ${attachment.asset.id}@${attachment.asset.version} to ` +
+            `${preview.new_attachment.asset.id}@${preview.new_attachment.asset.version}?`,
+          '',
+          `Replacement digest: ${preview.new_attachment.asset.digest}`,
+          `Role (retained): ${preview.new_attachment.role}`,
+          `Applies: ${preview.new_attachment.scope.applies_to.join(', ') || 'none'}`,
+          `Excludes: ${preview.new_attachment.scope.does_not_apply_to.join(', ') || 'none'}`,
+          `Access: ${preview.authorization.new.access} · ` +
+            `load plan: ${preview.authorization.new.load_plan_state}`,
+          '',
+          'The CLI preview above is the exact payload; confirm to execute the ' +
+            'scope-retaining switch. Roll Back restores the previous snapshot.',
+        ].join('\n'),
+        { modal: true },
+        'Confirm Switch',
+      );
+      if (confirmation !== 'Confirm Switch') return;
+      await client.switchApproved(
+        folder.uri.fsPath,
+        attachment.attachment_id,
+        asset.fsPath,
+      );
+      const record = await client.status(folder.uri.fsPath);
+      const current = record?.attachments.find(
+        ({ attachment_id: attachmentId }) => attachmentId === attachment.attachment_id,
+      );
+      if (!current || current.asset.digest !== preview.new_attachment.asset.digest) {
+        await this.refresh();
+        await vscode.window.showWarningMessage(
+          'KDNA workspace state changed after the switch confirmation. Review Workspace Attachments before continuing.',
+        );
+        return;
+      }
+      await this.refresh();
+      await vscode.window.showInformationMessage(
+        `KDNA: switched ${current.asset.id}.`,
       );
     } catch (error) {
       await this.showSafeError(error);
