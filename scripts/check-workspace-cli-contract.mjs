@@ -65,6 +65,12 @@ if (!controllerSource.includes('switchPreview(') || !controllerSource.includes('
 if (/\[\s*'switch'\s*,/u.test(controllerSource)) {
   fail('workspaceAttachmentController.ts must not hand-build the switch argument vector');
 }
+if (!controllerSource.includes('attachPreview(') || !controllerSource.includes('attachApproved(')) {
+  fail('workspaceAttachmentController.ts must run attach through the single-truth client preview/approved flow');
+}
+if (/\[\s*'attach'\s*,/u.test(controllerSource)) {
+  fail('workspaceAttachmentController.ts must not hand-build the attach argument vector');
+}
 
 const pkg = JSON.parse(read('package.json'));
 const description = pkg.contributes?.configuration?.properties?.['kdna.workspaceCliEntry']?.description ?? '';
@@ -94,6 +100,11 @@ if (!unitTestSource.includes('switchAttachmentArgs(') ||
     !unitTestSource.includes('switchApprovedArgs(')) {
   fail('unit tests must exercise the single switch argument builders');
 }
+if (!unitTestSource.includes('attachBaseArgs(') ||
+    !unitTestSource.includes('attachPreviewArgs(') ||
+    !unitTestSource.includes('attachApprovedArgs(')) {
+  fail('unit tests must exercise the single attach argument builders');
+}
 for (const neighboring of ['0.36.0', '0.36.2', '0.37.0']) {
   if (!unitTestSource.includes(`'${neighboring}'`)) {
     fail(`unit tests must keep the fail-closed case for CLI ${neighboring}`);
@@ -111,6 +122,11 @@ if (!contractTestSource.includes('switchAttachmentArgs(') ||
     !contractTestSource.includes('switchPreviewArgs(') ||
     !contractTestSource.includes('switchApprovedArgs(')) {
   fail('real-CLI contract test must consume the single switch argument builders');
+}
+if (!contractTestSource.includes('attachBaseArgs(') ||
+    !contractTestSource.includes('attachPreviewArgs(') ||
+    !contractTestSource.includes('attachApprovedArgs(')) {
+  fail('real-CLI contract test must consume the single attach argument builders');
 }
 
 console.log(`Workspace CLI contract gate passed: exact CLI ${version}, record schema ${schemaVersion}.`);

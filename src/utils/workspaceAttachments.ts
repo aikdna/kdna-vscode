@@ -83,6 +83,56 @@ export function switchApprovedArgs(
   ];
 }
 
+/**
+ * Single truth for the exact CLI argument vector the "Attach File…" UI launches.
+ * The UI collects role/applies-to/does-not-apply-to from the user, runs a real
+ * CLI preview, shows the exact payload in a modal, and only then executes the
+ * approved variant. This avoids CLI 0.36.1's terminal confirmation, which fails
+ * with EAGAIN on the VS Code PTY.
+ */
+export function attachBaseArgs(
+  assetPath: string,
+  workspaceRoot: string,
+  role: string,
+  appliesTo: string[],
+  doesNotApplyTo: string[],
+): string[] {
+  return [
+    'attach',
+    assetPath,
+    '--cwd',
+    workspaceRoot,
+    '--role',
+    role,
+    ...appliesTo.flatMap((value) => ['--applies-to', value]),
+    ...doesNotApplyTo.flatMap((value) => ['--does-not-apply-to', value]),
+  ];
+}
+
+export function attachPreviewArgs(
+  assetPath: string,
+  workspaceRoot: string,
+  role: string,
+  appliesTo: string[],
+  doesNotApplyTo: string[],
+): string[] {
+  return [...attachBaseArgs(assetPath, workspaceRoot, role, appliesTo, doesNotApplyTo), '--preview'];
+}
+
+export function attachApprovedArgs(
+  assetPath: string,
+  workspaceRoot: string,
+  role: string,
+  appliesTo: string[],
+  doesNotApplyTo: string[],
+): string[] {
+  return [
+    ...attachBaseArgs(assetPath, workspaceRoot, role, appliesTo, doesNotApplyTo),
+    '--yes',
+    '--scope-user-approved',
+  ];
+}
+
 export interface WorkspaceAssetReference {
   id: string;
   version: string;
@@ -155,6 +205,30 @@ export interface SwitchPreview {
   };
   scope_contract: {
     inherited_without_review: boolean;
+    asset_declared_preload_boundary: string;
+    runtime_boundary_remains_authoritative: boolean;
+  };
+}
+
+export interface AttachPreview {
+  operation: 'attach';
+  consent_digest: string;
+  workspace_boundary: { kind: 'exact_workspace'; root: string };
+  attachment: {
+    asset: WorkspaceAssetReference;
+    state: 'enabled' | 'disabled';
+    role: string;
+    scope: WorkspaceScope;
+    resolution_policy: 'load_when_clear_ask_when_ambiguous';
+    update_policy: 'explicit_switch_only';
+  };
+  authorization: {
+    access: string;
+    required_before_load: boolean;
+    load_plan_state: string;
+  };
+  scope_contract: {
+    authority: 'user_approved_routing_hint';
     asset_declared_preload_boundary: string;
     runtime_boundary_remains_authoritative: boolean;
   };
@@ -352,6 +426,82 @@ function validAuthorizationFacts(value: unknown): boolean {
     boundedText(facts.load_plan_state);
 }
 
+function validAttachPreviewEnvelope(value: unknown): value is AttachPreview {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const envelope = value as Record<string, unknown>;
+  if (!exactKeys(envelope, ['operation', 'mode', 'workspace_root', 'confirmation_required', 'preview'])) {
+    return false;
+  }
+  if (envelope.operation !== 'attach' || envelope.mode !== 'preview' ||
+    envelope.confirmation_required !== true || !boundedText(envelope.workspace_root)) {
+    return false;
+  }
+  const preview = envelope.preview;
+  if (!preview || typeof preview !== 'object' || Array.isArray(preview)) return false;
+  const facts = preview as Record<string, unknown>;
+  if (!exactKeys(facts, [
+    'operation',
+    'consent_digest',
+    'workspace_boundary',
+    'attachment',
+    'authorization',
+    'scope_contract',
+  ])) return false;
+  if (facts.operation !== 'attach' ||
+    typeof facts.consent_digest !== 'string' ||
+    !/^sha256:[0-9a-f]{64}$/u.test(facts.consent_digest)) return false;
+  const boundary = facts.workspace_boundary;
+  if (!boundary || typeof boundary !== 'object' || Array.isArray(boundary) ||
+    !exactKeys(boundary, ['kind', 'root']) ||
+    (boundary as Record<string, unknown>).kind !== 'exact_workspace' ||
+    !boundedText((boundary as Record<string, unknown>).root)) return false;
+  const attachment = facts.attachment;
+  if (!attachment || typeof attachment !== 'object' || Array.isArray(attachment)) return false;
+  const entry = attachment as Record<string, unknown>;
+  if (!exactKeys(entry, [
+    'asset',
+    'state',
+    'role',
+    'scope',
+    'resolution_policy',
+    'update_policy',
+  ]) ||
+    !validAssetReference(entry.asset) ||
+    !boundedText(entry.role) ||
+    !validScope(entry.scope) ||
+    entry.resolution_policy !== 'load_when_clear_ask_when_ambiguous' ||
+    entry.update_policy !== 'explicit_switch_only' ||
+    (entry.state !== 'enabled' && entry.state !== 'disabled')) return false;
+  const authorization = facts.authorization;
+  if (!authorization || typeof authorization !== 'object' || Array.isArray(authorization) ||
+    !exactKeys(authorization, ['access', 'required_before_load', 'load_plan_state']) ||
+    !validAuthorizationFacts(authorization)) return false;
+  const contract = facts.scope_contract;
+  if (!contract || typeof contract !== 'object' || Array.isArray(contract) ||
+    !exactKeys(contract, [
+      'authority',
+      'asset_declared_preload_boundary',
+      'runtime_boundary_remains_authoritative',
+    ]) ||
+    (contract as Record<string, unknown>).authority !== 'user_approved_routing_hint' ||
+    !boundedText((contract as Record<string, unknown>).asset_declared_preload_boundary) ||
+    (contract as Record<string, unknown>).runtime_boundary_remains_authoritative !== true) {
+    return false;
+  }
+  return true;
+}
+
+export function parseAttachPreview(stdout: string): AttachPreview {
+  const value = safeJson(stdout);
+  if (!validAttachPreviewEnvelope(value)) {
+    throw new WorkspaceCliError(
+      'workspace_output_invalid',
+      'The configured KDNA CLI returned an invalid attach preview.',
+    );
+  }
+  return (value as unknown as { preview: AttachPreview }).preview;
+}
+
 function validSwitchPreviewEnvelope(value: unknown): value is SwitchPreview {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const envelope = value as Record<string, unknown>;
@@ -517,6 +667,35 @@ export class WorkspaceCliClient {
     ));
   }
 
+  async attachPreview(
+    workspaceRoot: string,
+    assetPath: string,
+    role: string,
+    appliesTo: string[],
+    doesNotApplyTo: string[],
+  ): Promise<AttachPreview> {
+    const safeRoot = await this.safeWorkspaceDirectory(workspaceRoot);
+    const stdout = await this.run(
+      attachPreviewArgs(assetPath, safeRoot, role, appliesTo, doesNotApplyTo),
+      safeRoot,
+    );
+    return parseAttachPreview(stdout);
+  }
+
+  async attachApproved(
+    workspaceRoot: string,
+    assetPath: string,
+    role: string,
+    appliesTo: string[],
+    doesNotApplyTo: string[],
+  ): Promise<unknown> {
+    const safeRoot = await this.safeWorkspaceDirectory(workspaceRoot);
+    return safeJson(await this.run(
+      attachApprovedArgs(assetPath, safeRoot, role, appliesTo, doesNotApplyTo),
+      safeRoot,
+    ));
+  }
+
   async remove(workspaceRoot: string, attachmentId: string): Promise<unknown> {
     this.assertAttachmentId(attachmentId);
     const safeRoot = await this.requiredWorkspaceRoot(workspaceRoot);
@@ -538,16 +717,7 @@ export class WorkspaceCliClient {
     workspaceRoot: string,
     requireRecord: boolean,
   ): Promise<string | null> {
-    let safeRoot: string;
-    try {
-      safeRoot = await realpath(workspaceRoot);
-      if (!(await stat(safeRoot)).isDirectory()) throw new Error('not a directory');
-    } catch {
-      throw new WorkspaceCliError(
-        'workspace_unavailable',
-        'The selected VS Code workspace is unavailable.',
-      );
-    }
+    const safeRoot = await this.safeWorkspaceDirectory(workspaceRoot);
     const recordPath = path.join(safeRoot, '.kdna', 'attachments.json');
     try {
       const recordInfo = await lstat(recordPath);
@@ -559,6 +729,19 @@ export class WorkspaceCliClient {
       throw new WorkspaceCliError(
         'workspace_record_unavailable',
         'This exact VS Code workspace has no safe KDNA attachment record.',
+      );
+    }
+  }
+
+  private async safeWorkspaceDirectory(workspaceRoot: string): Promise<string> {
+    try {
+      const safeRoot = await realpath(workspaceRoot);
+      if (!(await stat(safeRoot)).isDirectory()) throw new Error('not a directory');
+      return safeRoot;
+    } catch {
+      throw new WorkspaceCliError(
+        'workspace_unavailable',
+        'The selected VS Code workspace is unavailable.',
       );
     }
   }

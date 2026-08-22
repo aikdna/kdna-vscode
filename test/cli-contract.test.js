@@ -18,6 +18,10 @@ const path = require('node:path');
 const { after, before, test } = require('node:test');
 
 const {
+  attachApprovedArgs,
+  attachBaseArgs,
+  attachPreviewArgs,
+  parseAttachPreview,
   parseSwitchPreview,
   switchApprovedArgs,
   switchAttachmentArgs,
@@ -212,6 +216,95 @@ test('extension client consumes the real switch preview, approved execution, and
   assert.equal(rolledBack.state, 'enabled');
   assert.deepEqual(rolledBack.scope.applies_to, ['deployment']);
   assert.equal(rolledBack.history.length, 0);
+});
+
+test('extension client consumes the real attach preview and approved execution', { skip }, async () => {
+  const attachWorkspace = fs.mkdtempSync(path.join(os.tmpdir(), 'kdna-vscode-cli-attach-'));
+  roots.push(attachWorkspace);
+  const attachAsset = path.join(attachWorkspace, 'asset.kdna');
+  cli(['demo', 'judgment', path.join(attachWorkspace, 'assets')], attachWorkspace);
+  cli(['pack', path.join(attachWorkspace, 'assets'), attachAsset], attachWorkspace);
+
+  const client = new WorkspaceCliClient(CLI_ENTRY);
+  const role = 'secondary-review';
+  const appliesTo = ['release'];
+  const doesNotApplyTo = ['fiction'];
+
+  const uiArgs = attachBaseArgs(attachAsset, attachWorkspace, role, appliesTo, doesNotApplyTo);
+  assert.deepEqual(uiArgs, [
+    'attach',
+    attachAsset,
+    '--cwd',
+    attachWorkspace,
+    '--role',
+    role,
+    '--applies-to',
+    appliesTo[0],
+    '--does-not-apply-to',
+    doesNotApplyTo[0],
+  ]);
+  assert.deepEqual(attachPreviewArgs(attachAsset, attachWorkspace, role, appliesTo, doesNotApplyTo), [
+    ...uiArgs,
+    '--preview',
+  ]);
+  assert.deepEqual(attachApprovedArgs(attachAsset, attachWorkspace, role, appliesTo, doesNotApplyTo), [
+    ...uiArgs,
+    '--yes',
+    '--scope-user-approved',
+  ]);
+  for (const forbidden of [
+    '--attachment-stdin', '--retain-scope', '--consent-digest',
+  ]) {
+    assert.equal(uiArgs.includes(forbidden), false);
+    assert.equal(attachApprovedArgs(attachAsset, attachWorkspace, role, appliesTo, doesNotApplyTo).includes(forbidden), false);
+  }
+
+  const before = await client.status(attachWorkspace);
+  assert.equal(before, null, 'precondition: no existing attachment record');
+
+  const preview = await client.attachPreview(attachWorkspace, attachAsset, role, appliesTo, doesNotApplyTo);
+  assert.equal(preview.operation, 'attach');
+  assert.equal(preview.attachment.asset.id, 'kdna:example:content-review');
+  assert.equal(preview.attachment.role, role);
+  assert.equal(preview.attachment.scope.application, 'task_hints');
+  assert.equal(preview.attachment.scope.matching_policy, 'open_world_ask');
+  assert.deepEqual(preview.attachment.scope.applies_to, appliesTo);
+  assert.deepEqual(preview.attachment.scope.does_not_apply_to, doesNotApplyTo);
+  assert.match(preview.consent_digest, /^sha256:[0-9a-f]{64}$/u);
+
+  // Cancel before approval: no bytes written.
+  const afterPreview = await client.status(attachWorkspace);
+  assert.equal(afterPreview, null);
+
+  await client.attachApproved(attachWorkspace, attachAsset, role, appliesTo, doesNotApplyTo);
+  const record = await client.status(attachWorkspace);
+  assert.equal(record.attachments.length, 1);
+  const attached = record.attachments[0];
+  assert.equal(attached.asset.digest, preview.attachment.asset.digest);
+  assert.equal(attached.asset.id, preview.attachment.asset.id);
+  assert.equal(attached.role, preview.attachment.role);
+  assert.equal(attached.scope.application, preview.attachment.scope.application);
+  assert.equal(attached.scope.matching_policy, preview.attachment.scope.matching_policy);
+  assert.deepEqual(attached.scope.applies_to, preview.attachment.scope.applies_to);
+  assert.deepEqual(attached.scope.does_not_apply_to, preview.attachment.scope.does_not_apply_to);
+  assert.equal(attached.scope.approval_source, 'user_explicit');
+  assert.equal(attached.state, 'enabled');
+  assert.equal(attached.history.length, 0);
+});
+
+test('a missing attach asset fails closed without partial writes', { skip }, async () => {
+  const attachWorkspace = fs.mkdtempSync(path.join(os.tmpdir(), 'kdna-vscode-cli-attach-miss-'));
+  roots.push(attachWorkspace);
+  const client = new WorkspaceCliClient(CLI_ENTRY);
+  const missing = path.join(attachWorkspace, 'does-not-exist.kdna');
+  const before = await client.status(attachWorkspace);
+  assert.equal(before, null);
+  await assert.rejects(
+    () => client.attachApproved(attachWorkspace, missing, 'role', ['scope'], []),
+    (error) => error instanceof Error && /workspace/.test(error.message),
+  );
+  const after = await client.status(attachWorkspace);
+  assert.equal(after, null);
 });
 
 test('a drifted or missing replacement asset fails closed without partial writes', { skip }, async () => {

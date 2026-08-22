@@ -77,8 +77,10 @@ controls disabled), and no fallback CLI or `PATH` scan is attempted.
 5. **Check attachments.** Run **KDNA: Workspace Attachments** to see the active
    workspace's approved identity, digest, role, scope, and enabled state, then
    disable/enable, switch, rollback offline, or remove the relation. Attach and
-   switch run the official CLI in an interactive terminal so its exact preview
-   and confirmation remain authoritative.
+   switch run the official CLI preview first, show the exact payload in a VS Code
+   modal confirmation, and only then execute the approved non-interactive CLI
+   command; destructive-looking controls use confirmation or an immediate undo
+   action.
 
 ---
 

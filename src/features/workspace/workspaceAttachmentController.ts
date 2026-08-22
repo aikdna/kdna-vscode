@@ -328,17 +328,63 @@ export class WorkspaceAttachmentController implements vscode.Disposable {
     });
     if (excludesText === undefined) return;
 
-    const args = [
-      'attach',
-      asset.fsPath,
-      '--cwd',
-      folder.uri.fsPath,
-      '--role',
-      role.trim(),
-      ...commaSeparated(appliesText).flatMap((value) => ['--applies-to', value]),
-      ...commaSeparated(excludesText).flatMap((value) => ['--does-not-apply-to', value]),
-    ];
-    await this.launchApprovalTerminal(folder, client, 'KDNA Attach', args);
+    const appliesTo = commaSeparated(appliesText);
+    const doesNotApplyTo = commaSeparated(excludesText);
+    try {
+      const preview = await client.attachPreview(
+        folder.uri.fsPath,
+        asset.fsPath,
+        role.trim(),
+        appliesTo,
+        doesNotApplyTo,
+      );
+      const confirmation = await vscode.window.showWarningMessage(
+        [
+          `Attach ${preview.attachment.asset.id}@${preview.attachment.asset.version} to ${folder.name}?`,
+          '',
+          `Digest: ${preview.attachment.asset.digest}`,
+          `Role: ${preview.attachment.role}`,
+          `Applies: ${preview.attachment.scope.applies_to.join(', ') || 'none'}`,
+          `Excludes: ${preview.attachment.scope.does_not_apply_to.join(', ') || 'none'}`,
+          `Access: ${preview.authorization.access} · ` +
+            `load plan: ${preview.authorization.load_plan_state}`,
+          '',
+          'The CLI preview above is the exact payload; confirm to execute the attachment.',
+        ].join('\n'),
+        { modal: true },
+        'Confirm Attach',
+      );
+      if (confirmation !== 'Confirm Attach') return;
+      await client.attachApproved(
+        folder.uri.fsPath,
+        asset.fsPath,
+        role.trim(),
+        appliesTo,
+        doesNotApplyTo,
+      );
+      const record = await client.status(folder.uri.fsPath);
+      const current = record?.attachments.find((attachment) =>
+        attachment.asset.digest === preview.attachment.asset.digest &&
+        attachment.role === preview.attachment.role &&
+        attachment.scope.application === preview.attachment.scope.application &&
+        attachment.scope.matching_policy === preview.attachment.scope.matching_policy &&
+        JSON.stringify([...attachment.scope.applies_to].sort()) ===
+          JSON.stringify([...preview.attachment.scope.applies_to].sort()) &&
+        JSON.stringify([...attachment.scope.does_not_apply_to].sort()) ===
+          JSON.stringify([...preview.attachment.scope.does_not_apply_to].sort()),
+      );
+      if (!current) {
+        await this.refresh();
+        await vscode.window.showWarningMessage(
+          'KDNA workspace state changed after the attach confirmation. Review Workspace Attachments before continuing.',
+        );
+        return;
+      }
+      await this.refresh();
+      await vscode.window.showInformationMessage(`KDNA: attached ${current.asset.id}.`);
+    } catch (error) {
+      await this.showSafeError(error);
+    }
   }
 
   private async switchAttachment(
@@ -423,32 +469,6 @@ export class WorkspaceAttachmentController implements vscode.Disposable {
       'KDNA workspace state changed after these controls opened. Reopen Workspace Attachments to act on the current state.',
     );
     return false;
-  }
-
-  private async launchApprovalTerminal(
-    folder: vscode.WorkspaceFolder,
-    client: WorkspaceCliClient,
-    name: string,
-    args: string[],
-  ): Promise<void> {
-    try {
-      const executable = await client.executable();
-      const terminal = vscode.window.createTerminal({
-        name,
-        shellPath: process.execPath,
-        shellArgs: [executable, ...args],
-        cwd: folder.uri,
-        env: { ELECTRON_RUN_AS_NODE: '1' },
-      });
-      const closeListener = vscode.window.onDidCloseTerminal((closed) => {
-        if (closed !== terminal) return;
-        closeListener.dispose();
-        void this.refresh();
-      });
-      terminal.show();
-    } catch (error) {
-      await this.showSafeError(error);
-    }
   }
 
   private async refresh(): Promise<void> {

@@ -5,6 +5,10 @@ import * as path from 'node:path';
 import { afterEach, describe, it } from 'node:test';
 
 import {
+  attachApprovedArgs,
+  attachBaseArgs,
+  attachPreviewArgs,
+  parseAttachPreview,
   parseSwitchPreview,
   parseWorkspaceAttachmentRecord,
   switchApprovedArgs,
@@ -93,6 +97,8 @@ const responses = ${JSON.stringify(responseMap)};
 let responseKey = args[0];
 if (args[0] === 'switch' && args.includes('--preview')) responseKey = 'switch-preview';
 if (args[0] === 'switch' && args.includes('--yes')) responseKey = 'switch-approved';
+if (args[0] === 'attach' && args.includes('--preview')) responseKey = 'attach-preview';
+if (args[0] === 'attach' && args.includes('--yes')) responseKey = 'attach-approved';
 if (Object.prototype.hasOwnProperty.call(responses, responseKey)) {
   process.stdout.write(responses[responseKey]);
 } else if (args[0] === 'attachments') {
@@ -164,6 +170,135 @@ describe('workspace switch argument contract (single truth for the real UI)', ()
     const args = switchAttachmentArgs('att_x', asset, '/tmp/ws/space $(evil)');
     assert.deepEqual(args.slice(0, 3), ['switch', 'att_x', asset]);
     assert.deepEqual(args.slice(3), ['--cwd', '/tmp/ws/space $(evil)', '--retain-scope']);
+  });
+});
+
+describe('workspace attach argument contract (single truth for the real UI)', () => {
+  it('builds the argv role/scope vector the real CLI expects', () => {
+    const args = attachBaseArgs('/tmp/ws/asset.kdna', '/tmp/ws', 'review', ['a', 'b'], ['c']);
+    assert.deepEqual(args, [
+      'attach',
+      '/tmp/ws/asset.kdna',
+      '--cwd',
+      '/tmp/ws',
+      '--role',
+      'review',
+      '--applies-to',
+      'a',
+      '--applies-to',
+      'b',
+      '--does-not-apply-to',
+      'c',
+    ]);
+  });
+
+  it('never adds stdin policy, retain-scope, or automatic approval flags in the base vector', () => {
+    const args = attachBaseArgs('asset.kdna', 'ws', 'role', ['s'], []);
+    for (const forbidden of [
+      '--attachment-stdin',
+      '--retain-scope',
+      '--yes',
+      '--scope-user-approved',
+      '--consent-digest',
+      '--preview',
+    ]) {
+      assert.equal(args.includes(forbidden), false, `${forbidden} must not be added`);
+    }
+  });
+
+  it('derives the preview and approved vectors from the same base', () => {
+    const base = attachBaseArgs('asset.kdna', 'ws', 'role', ['s'], []);
+    assert.deepEqual(attachPreviewArgs('asset.kdna', 'ws', 'role', ['s'], []), [...base, '--preview']);
+    assert.deepEqual(
+      attachApprovedArgs('asset.kdna', 'ws', 'role', ['s'], []),
+      [...base, '--yes', '--scope-user-approved'],
+    );
+    const approved = attachApprovedArgs('asset.kdna', 'ws', 'role', ['s'], []);
+    assert.equal(approved.filter((argument) => argument === '--role').length, 1);
+    assert.equal(approved.includes('--attachment-stdin'), false);
+    assert.equal(approved.includes('--retain-scope'), false);
+    assert.equal(approved.includes('--consent-digest'), false);
+    assert.equal(attachPreviewArgs('asset.kdna', 'ws', 'role', ['s'], []).includes('--yes'), false);
+  });
+});
+
+describe('attach preview parsing boundary', () => {
+  function attachPreviewEnvelope(): unknown {
+    return {
+      operation: 'attach',
+      mode: 'preview',
+      workspace_root: '.',
+      confirmation_required: true,
+      preview: {
+        operation: 'attach',
+        consent_digest: `sha256:${'b'.repeat(64)}`,
+        workspace_boundary: { kind: 'exact_workspace', root: '.' },
+        attachment: {
+          asset: {
+            id: 'kdna:test:new',
+            version: '1.0.0',
+            digest: `sha256:${'c'.repeat(64)}`,
+            snapshot: `assets/sha256-${'c'.repeat(64)}.kdna`,
+          },
+          state: 'enabled',
+          role: 'deployment-review',
+          scope: {
+            kind: 'workspace',
+            application: 'task_hints',
+            matching_policy: 'open_world_ask',
+            authority: 'user_approved_routing_hint',
+            approval_source: 'preview_confirmed',
+            applies_to: ['deployment'],
+            does_not_apply_to: [],
+          },
+          resolution_policy: 'load_when_clear_ask_when_ambiguous',
+          update_policy: 'explicit_switch_only',
+        },
+        authorization: {
+          access: 'public',
+          required_before_load: false,
+          load_plan_state: 'ready',
+        },
+        scope_contract: {
+          authority: 'user_approved_routing_hint',
+          asset_declared_preload_boundary: 'not_available_in_current_manifest_contract',
+          runtime_boundary_remains_authoritative: true,
+        },
+      },
+    };
+  }
+
+  it('accepts the exact real-CLI attach preview payload', () => {
+    const parsed = parseAttachPreview(JSON.stringify(attachPreviewEnvelope()));
+    assert.equal(parsed.operation, 'attach');
+    assert.equal(parsed.attachment.asset.id, 'kdna:test:new');
+    assert.equal(parsed.attachment.role, 'deployment-review');
+    assert.equal(parsed.attachment.scope.application, 'task_hints');
+    assert.equal(parsed.authorization.load_plan_state, 'ready');
+    assert.equal(parsed.scope_contract.runtime_boundary_remains_authoritative, true);
+  });
+
+  it('rejects malformed, extended, and inconsistent attach previews', () => {
+    assert.throws(() => parseAttachPreview('{'));
+    const extended = attachPreviewEnvelope();
+    (extended as Record<string, unknown>).extra = true;
+    assert.throws(() => parseAttachPreview(JSON.stringify(extended)));
+    const extendedInner = attachPreviewEnvelope() as Record<string, unknown>;
+    (extendedInner.preview as Record<string, unknown>).extra = true;
+    assert.throws(() => parseAttachPreview(JSON.stringify(extendedInner)));
+    const badDigest = attachPreviewEnvelope();
+    (badDigest as Record<string, unknown>).preview = {
+      ...(badDigest as Record<string, unknown>).preview as object,
+      consent_digest: `sha256:${'z'.repeat(64)}`,
+    };
+    assert.throws(() => parseAttachPreview(JSON.stringify(badDigest)));
+    const inconsistent = attachPreviewEnvelope();
+    ((inconsistent as Record<string, unknown>).preview as Record<string, unknown>)
+      .attachment = { state: 'enabled' };
+    assert.throws(() => parseAttachPreview(JSON.stringify(inconsistent)));
+    const missingConfirmation = attachPreviewEnvelope();
+    (missingConfirmation as Record<string, unknown>).confirmation_required = false;
+    assert.throws(() => parseAttachPreview(JSON.stringify(missingConfirmation)));
   });
 });
 
@@ -623,6 +758,105 @@ describe('workspace CLI process boundary', () => {
         workspace,
         'att_0123456789abcdef01234567',
         '/tmp/replacement.kdna',
+      ),
+      (error: unknown) => error instanceof WorkspaceCliError &&
+        error.code === 'workspace_output_invalid',
+    );
+  });
+
+  it('consumes the attach preview and approved vectors through the client', async () => {
+    const previewEnvelope = JSON.stringify({
+      operation: 'attach',
+      mode: 'preview',
+      workspace_root: '.',
+      confirmation_required: true,
+      preview: {
+        operation: 'attach',
+        consent_digest: `sha256:${'b'.repeat(64)}`,
+        workspace_boundary: { kind: 'exact_workspace', root: '.' },
+        attachment: {
+          asset: {
+            id: 'kdna:test:new',
+            version: '1.0.0',
+            digest: `sha256:${'c'.repeat(64)}`,
+            snapshot: `assets/sha256-${'c'.repeat(64)}.kdna`,
+          },
+          state: 'enabled',
+          role: 'deployment-review',
+          scope: {
+            kind: 'workspace',
+            application: 'task_hints',
+            matching_policy: 'open_world_ask',
+            authority: 'user_approved_routing_hint',
+            approval_source: 'preview_confirmed',
+            applies_to: ['deployment'],
+            does_not_apply_to: [],
+          },
+          resolution_policy: 'load_when_clear_ask_when_ambiguous',
+          update_policy: 'explicit_switch_only',
+        },
+        authorization: {
+          access: 'public',
+          required_before_load: false,
+          load_plan_state: 'ready',
+        },
+        scope_contract: {
+          authority: 'user_approved_routing_hint',
+          asset_declared_preload_boundary: 'not_available_in_current_manifest_contract',
+          runtime_boundary_remains_authoritative: true,
+        },
+      },
+    });
+    const fake = fakeCli(WORKSPACE_CLI_VERSION, {
+      'attach-preview': previewEnvelope,
+      'attach-approved': JSON.stringify({ operation: 'attach', attached: true }),
+    });
+    const workspace = path.join(fake.root, 'ws');
+    fs.mkdirSync(path.join(workspace, '.kdna'), { recursive: true });
+    fs.writeFileSync(path.join(workspace, '.kdna', 'attachments.json'), '{}');
+    process.env.KDNA_VSCODE_TEST_LOG = fake.log;
+    const client = new WorkspaceCliClient(fake.executable);
+
+    const preview = await client.attachPreview(
+      workspace,
+      '/tmp/new.kdna',
+      'deployment-review',
+      ['deployment'],
+      [],
+    );
+    assert.equal(preview.attachment.asset.id, 'kdna:test:new');
+    const approved = await client.attachApproved(
+      workspace,
+      '/tmp/new.kdna',
+      'deployment-review',
+      ['deployment'],
+      [],
+    );
+    assert.deepEqual(approved, { operation: 'attach', attached: true });
+
+    const safeWorkspace = fs.realpathSync(workspace);
+    const invocations = fs.readFileSync(fake.log, 'utf8')
+      .trim()
+      .split('\n')
+      .map((line) => JSON.parse(line));
+    assert.deepEqual(invocations, [
+      ['attach', '/tmp/new.kdna', '--cwd', safeWorkspace, '--role', 'deployment-review', '--applies-to', 'deployment', '--preview'],
+      ['attach', '/tmp/new.kdna', '--cwd', safeWorkspace, '--role', 'deployment-review', '--applies-to', 'deployment', '--yes', '--scope-user-approved'],
+    ]);
+  });
+
+  it('fails closed when the CLI returns an invalid attach preview', async () => {
+    const broken = fakeCli(WORKSPACE_CLI_VERSION, { 'attach-preview': '{not-json' });
+    const workspace = path.join(broken.root, 'ws');
+    fs.mkdirSync(path.join(workspace, '.kdna'), { recursive: true });
+    fs.writeFileSync(path.join(workspace, '.kdna', 'attachments.json'), '{}');
+    await assert.rejects(
+      new WorkspaceCliClient(broken.executable).attachPreview(
+        workspace,
+        '/tmp/new.kdna',
+        'deployment-review',
+        ['deployment'],
+        [],
       ),
       (error: unknown) => error instanceof WorkspaceCliError &&
         error.code === 'workspace_output_invalid',

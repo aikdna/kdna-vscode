@@ -24,8 +24,11 @@
   README, setting description, CHANGELOG, and test fixtures against the
   single contract constant.
 - Provide explicit disable/enable, switch, offline rollback, relation-only
-  remove, and attach entry points. Attach and switch retain the CLI's native
-  exact preview and positive terminal confirmation; destructive-looking
+  remove, and attach entry points. Switch retains the CLI's native exact
+  preview; both Attach and Switch show the CLI's real preview payload in a VS
+  Code modal confirmation and execute the CLI's non-interactive Host-approved
+  path (`--yes --scope-user-approved`), because the CLI's terminal
+  confirmation fails with `EAGAIN` on the VS Code PTY. Destructive-looking
   controls use confirmation or an immediate undo action.
 - Keep multi-root workspaces separate and fail closed when the CLI is absent,
   incompatible, produces an extended record, or rejects the request. No PATH
