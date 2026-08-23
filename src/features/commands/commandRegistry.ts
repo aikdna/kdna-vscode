@@ -12,6 +12,7 @@ import {
   isKdnaDomainDir,
   isKdnaFile,
   getDomainInfo,
+  pickLocalKdnaFile,
 } from '../../utils/kdnaFiles';
 import { validateDomainDir } from '../../utils/kdnaLoader';
 import { PreviewPanel } from '../webview/previewPanel';
@@ -53,13 +54,7 @@ async function pickDomainDir(): Promise<vscode.Uri | null> {
 }
 
 async function pickKdnaFile(): Promise<vscode.Uri | null> {
-  const uris = await vscode.window.showOpenDialog({
-    canSelectFiles: true,
-    canSelectFolders: false,
-    filters: { 'KDNA Asset': ['kdna'] },
-    title: 'Select .kdna file',
-  });
-  return uris?.[0] || null;
+  return pickLocalKdnaFile({ title: 'Select .kdna file' });
 }
 
 async function pickDomainOrKdna(): Promise<vscode.Uri | null> {

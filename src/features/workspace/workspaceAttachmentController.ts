@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { COMMANDS } from '../../constants';
+import { pickLocalKdnaFile } from '../../utils/kdnaFiles';
 import {
   AttachmentProposal,
   WORKSPACE_CLI_VERSION,
@@ -296,16 +297,11 @@ export class WorkspaceAttachmentController implements vscode.Disposable {
     if (!folder) return;
     const client = await this.requireClient(folder);
     if (!client) return;
-    const files = await vscode.window.showOpenDialog({
-      canSelectFiles: true,
-      canSelectFolders: false,
-      canSelectMany: false,
+    const asset = await pickLocalKdnaFile({
       defaultUri: folder.uri,
-      filters: { 'KDNA Asset': ['kdna'] },
       title: `Select the exact KDNA file to attach to ${folder.name}`,
     });
-    const asset = files?.[0];
-    if (!asset || asset.scheme !== 'file') return;
+    if (!asset) return;
     const role = await vscode.window.showInputBox({
       title: 'KDNA attachment role',
       prompt: 'Name the narrow role this asset has in the workspace.',
@@ -392,16 +388,11 @@ export class WorkspaceAttachmentController implements vscode.Disposable {
   ): Promise<void> {
     const client = await this.requireClient(folder);
     if (!client) return;
-    const files = await vscode.window.showOpenDialog({
-      canSelectFiles: true,
-      canSelectFolders: false,
-      canSelectMany: false,
+    const asset = await pickLocalKdnaFile({
       defaultUri: folder.uri,
-      filters: { 'KDNA Asset': ['kdna'] },
       title: `Select the exact replacement for ${attachment.asset.id}`,
     });
-    const asset = files?.[0];
-    if (!asset || asset.scheme !== 'file') return;
+    if (!asset) return;
     try {
       if (!await this.isCurrentAttachment(folder, client, attachment)) return;
       const preview = await client.switchPreview(
