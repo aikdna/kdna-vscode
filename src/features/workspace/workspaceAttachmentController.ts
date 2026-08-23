@@ -7,6 +7,7 @@ import {
   WorkspaceAttachmentRecord,
   WorkspaceCliClient,
   WorkspaceCliError,
+  attachmentRecordsEqual,
 } from '../../utils/workspaceAttachments';
 
 interface AttachmentItem extends vscode.QuickPickItem {
@@ -382,23 +383,7 @@ export class WorkspaceAttachmentController implements vscode.Disposable {
   }
 
   private attachmentsEqual(a: WorkspaceAttachment, b: WorkspaceAttachment): boolean {
-    return a.attachment_id === b.attachment_id &&
-      a.asset.id === b.asset.id &&
-      a.asset.version === b.asset.version &&
-      a.asset.digest === b.asset.digest &&
-      a.state === b.state &&
-      a.role === b.role &&
-      a.scope.kind === b.scope.kind &&
-      a.scope.application === b.scope.application &&
-      a.scope.matching_policy === b.scope.matching_policy &&
-      a.scope.authority === b.scope.authority &&
-      a.scope.approval_source === b.scope.approval_source &&
-      JSON.stringify([...a.scope.applies_to].sort()) ===
-        JSON.stringify([...b.scope.applies_to].sort()) &&
-      JSON.stringify([...a.scope.does_not_apply_to].sort()) ===
-        JSON.stringify([...b.scope.does_not_apply_to].sort()) &&
-      a.resolution_policy === b.resolution_policy &&
-      a.update_policy === b.update_policy;
+    return attachmentRecordsEqual(a, b);
   }
 
   private async switchAttachment(

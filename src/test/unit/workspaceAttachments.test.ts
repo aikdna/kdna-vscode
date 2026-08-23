@@ -10,6 +10,7 @@ import {
   attachPreviewArgs,
   attachmentProposalBytes,
   parseAttachPreview,
+  parseAttachResult,
   parseSwitchPreview,
   parseWorkspaceAttachmentRecord,
   switchApprovedArgs,
@@ -955,6 +956,189 @@ describe('workspace CLI process boundary', () => {
         does_not_apply_to: [],
       }),
       (error: unknown) => error instanceof WorkspaceCliError,
+    );
+  });
+
+  it('measures stdin proposal by UTF-8 bytes, not string length', () => {
+    function proposalUnderBytes(target: number) {
+      const base = Buffer.byteLength(
+        JSON.stringify({ role: 'x', applies_to: [''], does_not_apply_to: [] }),
+      );
+      const n = Math.max(0, target - base);
+      return { role: 'x', applies_to: ['a'.repeat(n)], does_not_apply_to: [] };
+    }
+    const limit = 64 * 1024;
+    assert.doesNotThrow(() => attachmentProposalBytes(proposalUnderBytes(limit)));
+    assert.throws(
+      () => attachmentProposalBytes(proposalUnderBytes(limit + 1)),
+      (error: unknown) => error instanceof WorkspaceCliError,
+    );
+    // Multibyte Chinese: string length 40,000 (< limit) but UTF-8 bytes 120,000 (> limit).
+    assert.throws(
+      () => attachmentProposalBytes({
+        role: 'x',
+        applies_to: ['中'.repeat(40_000)],
+        does_not_apply_to: [],
+      }),
+      (error: unknown) => error instanceof WorkspaceCliError,
+    );
+    // Multibyte emoji: string length 20,000 (< limit) but UTF-8 bytes 80,000 (> limit).
+    assert.throws(
+      () => attachmentProposalBytes({
+        role: 'x',
+        applies_to: ['🙂'.repeat(20_000)],
+        does_not_apply_to: [],
+      }),
+      (error: unknown) => error instanceof WorkspaceCliError,
+    );
+  });
+
+  it('measures stdout/stderr by UTF-8 bytes and rejects multibyte overflow', async () => {
+    function bigOutputCli(kind: 'stdout' | 'stderr', char: string) {
+      const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kdna-vscode-big-output-'));
+      roots.push(root);
+      const executable = path.join(root, 'fake-kdna');
+      // Emit just over 16 MiB of multibyte output in small chunks.
+      const chunk = char.repeat(1024);
+      const chunks = Math.ceil((16 * 1024 * 1024 + 1) / Buffer.byteLength(chunk));
+      fs.writeFileSync(
+        executable,
+        `#!/usr/bin/env node
+for (let i = 0; i < ${chunks}; i++) {
+  process.${kind}.write(${JSON.stringify(chunk)});
+}
+`,
+      );
+      fs.chmodSync(executable, 0o755);
+      return { root, executable };
+    }
+
+    const stdoutOverflow = bigOutputCli('stdout', '中');
+    await assert.rejects(
+      new WorkspaceCliClient(stdoutOverflow.executable).attachPreview(
+        stdoutOverflow.root,
+        '/tmp/new.kdna',
+        { role: 'deployment-review', applies_to: ['deployment'], does_not_apply_to: [] },
+      ),
+      (error: unknown) => error instanceof WorkspaceCliError &&
+        error.code === 'workspace_cli_rejected',
+    );
+
+    const stderrOverflow = bigOutputCli('stderr', '🙂');
+    await assert.rejects(
+      new WorkspaceCliClient(stderrOverflow.executable).attachPreview(
+        stderrOverflow.root,
+        '/tmp/new.kdna',
+        { role: 'deployment-review', applies_to: ['deployment'], does_not_apply_to: [] },
+      ),
+      (error: unknown) => error instanceof WorkspaceCliError &&
+        error.code === 'workspace_cli_rejected',
+    );
+  });
+
+  it('rejects attach results and previews with non-preview approval_source', () => {
+    function attachPreviewEnvelope(): Record<string, unknown> {
+      return {
+        operation: 'attach',
+        mode: 'preview',
+        workspace_root: '.',
+        confirmation_required: true,
+        preview: {
+          operation: 'attach',
+          consent_digest: `sha256:${'b'.repeat(64)}`,
+          workspace_boundary: { kind: 'exact_workspace', root: '.' },
+          attachment: {
+            asset: {
+              id: 'kdna:test:new',
+              version: '1.0.0',
+              digest: `sha256:${'c'.repeat(64)}`,
+              snapshot: `assets/sha256-${'c'.repeat(64)}.kdna`,
+            },
+            state: 'enabled',
+            role: 'deployment-review',
+            scope: {
+              kind: 'workspace',
+              application: 'task_hints',
+              matching_policy: 'open_world_ask',
+              authority: 'user_approved_routing_hint',
+              approval_source: 'preview_confirmed',
+              applies_to: ['deployment'],
+              does_not_apply_to: [],
+            },
+            resolution_policy: 'load_when_clear_ask_when_ambiguous',
+            update_policy: 'explicit_switch_only',
+          },
+          authorization: {
+            access: 'public',
+            required_before_load: false,
+            load_plan_state: 'ready',
+          },
+          scope_contract: {
+            authority: 'user_approved_routing_hint',
+            asset_declared_preload_boundary: 'not_available_in_current_manifest_contract',
+            runtime_boundary_remains_authoritative: true,
+          },
+        },
+      };
+    }
+
+    const userExplicitPreview = attachPreviewEnvelope();
+    (
+      ((userExplicitPreview.preview as Record<string, unknown>).attachment as Record<string, unknown>)
+        .scope as Record<string, unknown>
+    ).approval_source = 'user_explicit';
+    assert.throws(
+      () => parseAttachPreview(JSON.stringify(userExplicitPreview)),
+      (error: unknown) => error instanceof WorkspaceCliError && error.code === 'workspace_output_invalid',
+    );
+
+    const result = {
+      operation: 'attach',
+      workspace_root: '.',
+      attachment: {
+        attachment_id: 'att_0123456789abcdef01234567',
+        asset: {
+          id: 'kdna:test:new',
+          version: '1.0.0',
+          digest: `sha256:${'c'.repeat(64)}`,
+          snapshot: `assets/sha256-${'c'.repeat(64)}.kdna`,
+        },
+        state: 'enabled',
+        role: 'deployment-review',
+        scope: {
+          kind: 'workspace',
+          application: 'task_hints',
+          matching_policy: 'open_world_ask',
+          authority: 'user_approved_routing_hint',
+          approval_source: 'user_explicit',
+          applies_to: ['deployment'],
+          does_not_apply_to: [],
+        },
+        resolution_policy: 'load_when_clear_ask_when_ambiguous',
+        approved_at: '2026-07-22T00:00:00.000Z',
+        update_policy: 'explicit_switch_only',
+        history: [],
+      },
+    };
+    assert.throws(
+      () => parseAttachResult(JSON.stringify(result)),
+      (error: unknown) => error instanceof WorkspaceCliError && error.code === 'workspace_output_invalid',
+    );
+
+    const nonEmptyHistory = JSON.parse(JSON.stringify(result));
+    nonEmptyHistory.attachment.scope.approval_source = 'preview_confirmed';
+    nonEmptyHistory.attachment.history = [{
+      asset: nonEmptyHistory.attachment.asset,
+      role: 'old-role',
+      scope: nonEmptyHistory.attachment.scope,
+      resolution_policy: 'load_when_clear_ask_when_ambiguous',
+      approved_at: '2026-07-21T00:00:00.000Z',
+      update_policy: 'explicit_switch_only',
+      replaced_at: '2026-07-22T00:00:00.000Z',
+    }];
+    assert.throws(
+      () => parseAttachResult(JSON.stringify(nonEmptyHistory)),
+      (error: unknown) => error instanceof WorkspaceCliError && error.code === 'workspace_output_invalid',
     );
   });
 });

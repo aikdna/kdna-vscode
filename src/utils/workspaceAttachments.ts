@@ -101,13 +101,14 @@ export function attachmentProposalBytes(proposal: AttachmentProposal): Buffer {
     applies_to: proposal.applies_to,
     does_not_apply_to: proposal.does_not_apply_to,
   });
-  if (body.length > MAX_ATTACHMENT_STDIN_BYTES) {
+  const bytes = Buffer.from(body, 'utf8');
+  if (bytes.length > MAX_ATTACHMENT_STDIN_BYTES) {
     throw new WorkspaceCliError(
       'workspace_attachment_invalid',
       'The attachment scope proposal exceeds the size limit.',
     );
   }
-  return Buffer.from(body, 'utf8');
+  return bytes;
 }
 
 /**
@@ -333,6 +334,15 @@ function validScope(value: unknown): value is WorkspaceScope {
   return true;
 }
 
+/**
+ * Attach preview/approved results must carry approval_source=preview_confirmed,
+ * because the consent-digest path does not set user_explicit.
+ */
+function validAttachScope(value: unknown): value is WorkspaceScope {
+  if (!validScope(value)) return false;
+  return (value as WorkspaceScope).approval_source === 'preview_confirmed';
+}
+
 function validTimestamp(value: unknown): boolean {
   return typeof value === 'string' && UTC_TIMESTAMP.test(value) &&
     !Number.isNaN(Date.parse(value));
@@ -386,6 +396,34 @@ function validAttachment(value: unknown): value is WorkspaceAttachment {
     validTimestamp(item.approved_at) &&
     item.update_policy === 'explicit_switch_only' &&
     validHistory(item.history);
+}
+
+/** Attach-specific attachment result with approval_source=preview_confirmed. */
+function validAttachAttachment(value: unknown): value is WorkspaceAttachment {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const item = value as Record<string, unknown>;
+  if (!exactKeys(item, [
+    'attachment_id',
+    'asset',
+    'state',
+    'role',
+    'scope',
+    'resolution_policy',
+    'approved_at',
+    'update_policy',
+    'history',
+  ])) return false;
+
+  return ATTACHMENT_ID.test(String(item.attachment_id)) &&
+    validAssetReference(item.asset) &&
+    (item.state === 'enabled' || item.state === 'disabled') &&
+    boundedText(item.role) &&
+    validAttachScope(item.scope) &&
+    item.resolution_policy === 'load_when_clear_ask_when_ambiguous' &&
+    validTimestamp(item.approved_at) &&
+    item.update_policy === 'explicit_switch_only' &&
+    Array.isArray(item.history) &&
+    (item.history as unknown[]).length === 0;
 }
 
 export function parseWorkspaceAttachmentRecord(stdout: string): WorkspaceAttachmentRecord | null {
@@ -494,7 +532,7 @@ function validAttachPreviewEnvelope(value: unknown): value is AttachPreview {
   ]) ||
     !validAssetReference(entry.asset) ||
     !boundedText(entry.role) ||
-    !validScope(entry.scope) ||
+    !validAttachScope(entry.scope) ||
     entry.resolution_policy !== 'load_when_clear_ask_when_ambiguous' ||
     entry.update_policy !== 'explicit_switch_only' ||
     (entry.state !== 'enabled' && entry.state !== 'disabled')) return false;
@@ -533,7 +571,7 @@ function validAttachResult(value: unknown): value is { attachment: WorkspaceAtta
   const result = value as Record<string, unknown>;
   if (!exactKeys(result, ['operation', 'workspace_root', 'attachment'])) return false;
   if (result.operation !== 'attach' || !boundedText(result.workspace_root)) return false;
-  return validAttachment(result.attachment);
+  return validAttachAttachment(result.attachment);
 }
 
 export function parseAttachResult(stdout: string): WorkspaceAttachment {
@@ -545,6 +583,33 @@ export function parseAttachResult(stdout: string): WorkspaceAttachment {
     );
   }
   return (value as { attachment: WorkspaceAttachment }).attachment;
+}
+
+/**
+ * Defense-in-depth equality used after approved attach execution to compare
+ * the CLI mutation output with the on-disk status record.
+ */
+export function attachmentRecordsEqual(a: WorkspaceAttachment, b: WorkspaceAttachment): boolean {
+  return a.attachment_id === b.attachment_id &&
+    a.asset.id === b.asset.id &&
+    a.asset.version === b.asset.version &&
+    a.asset.digest === b.asset.digest &&
+    a.asset.snapshot === b.asset.snapshot &&
+    a.state === b.state &&
+    a.role === b.role &&
+    a.scope.kind === b.scope.kind &&
+    a.scope.application === b.scope.application &&
+    a.scope.matching_policy === b.scope.matching_policy &&
+    a.scope.authority === b.scope.authority &&
+    a.scope.approval_source === b.scope.approval_source &&
+    JSON.stringify([...a.scope.applies_to].sort()) ===
+      JSON.stringify([...b.scope.applies_to].sort()) &&
+    JSON.stringify([...a.scope.does_not_apply_to].sort()) ===
+      JSON.stringify([...b.scope.does_not_apply_to].sort()) &&
+    a.resolution_policy === b.resolution_policy &&
+    a.approved_at === b.approved_at &&
+    a.update_policy === b.update_policy &&
+    JSON.stringify(a.history) === JSON.stringify(b.history);
 }
 
 function validSwitchPreviewEnvelope(value: unknown): value is SwitchPreview {
@@ -841,8 +906,8 @@ export class WorkspaceCliClient {
         stdio: ['pipe', 'pipe', 'pipe'],
       });
 
-      let stdout = '';
-      let stderr = '';
+      let stdout = Buffer.alloc(0);
+      let stderr = Buffer.alloc(0);
       let killed = false;
       const timeout = setTimeout(() => {
         killed = true;
@@ -853,10 +918,8 @@ export class WorkspaceCliClient {
         ));
       }, 30_000);
 
-      child.stdout.setEncoding('utf8');
-      child.stderr.setEncoding('utf8');
-      child.stdout.on('data', (chunk: string) => {
-        stdout += chunk;
+      child.stdout.on('data', (chunk: Buffer) => {
+        stdout = Buffer.concat([stdout, chunk]);
         if (stdout.length > MAX_OUTPUT_BYTES) {
           killed = true;
           child.kill();
@@ -867,8 +930,8 @@ export class WorkspaceCliClient {
           ));
         }
       });
-      child.stderr.on('data', (chunk: string) => {
-        stderr += chunk;
+      child.stderr.on('data', (chunk: Buffer) => {
+        stderr = Buffer.concat([stderr, chunk]);
         if (stderr.length > MAX_OUTPUT_BYTES) {
           killed = true;
           child.kill();
@@ -898,7 +961,7 @@ export class WorkspaceCliClient {
           ));
           return;
         }
-        resolve(stdout);
+        resolve(stdout.toString('utf8'));
       });
 
       child.stdin.write(stdin, (error) => {
