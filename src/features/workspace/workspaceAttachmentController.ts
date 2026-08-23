@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { COMMANDS } from '../../constants';
 import {
+  AttachmentProposal,
   WORKSPACE_CLI_VERSION,
   WorkspaceAttachment,
   WorkspaceAttachmentRecord,
@@ -328,15 +329,16 @@ export class WorkspaceAttachmentController implements vscode.Disposable {
     });
     if (excludesText === undefined) return;
 
-    const appliesTo = commaSeparated(appliesText);
-    const doesNotApplyTo = commaSeparated(excludesText);
+    const proposal: AttachmentProposal = {
+      role: role.trim(),
+      applies_to: commaSeparated(appliesText),
+      does_not_apply_to: commaSeparated(excludesText),
+    };
     try {
       const preview = await client.attachPreview(
         folder.uri.fsPath,
         asset.fsPath,
-        role.trim(),
-        appliesTo,
-        doesNotApplyTo,
+        proposal,
       );
       const confirmation = await vscode.window.showWarningMessage(
         [
@@ -355,25 +357,17 @@ export class WorkspaceAttachmentController implements vscode.Disposable {
         'Confirm Attach',
       );
       if (confirmation !== 'Confirm Attach') return;
-      await client.attachApproved(
+      const approved = await client.attachApproved(
         folder.uri.fsPath,
         asset.fsPath,
-        role.trim(),
-        appliesTo,
-        doesNotApplyTo,
+        proposal,
+        preview.consent_digest,
       );
       const record = await client.status(folder.uri.fsPath);
-      const current = record?.attachments.find((attachment) =>
-        attachment.asset.digest === preview.attachment.asset.digest &&
-        attachment.role === preview.attachment.role &&
-        attachment.scope.application === preview.attachment.scope.application &&
-        attachment.scope.matching_policy === preview.attachment.scope.matching_policy &&
-        JSON.stringify([...attachment.scope.applies_to].sort()) ===
-          JSON.stringify([...preview.attachment.scope.applies_to].sort()) &&
-        JSON.stringify([...attachment.scope.does_not_apply_to].sort()) ===
-          JSON.stringify([...preview.attachment.scope.does_not_apply_to].sort()),
+      const current = record?.attachments.find(
+        ({ attachment_id: attachmentId }) => attachmentId === approved.attachment_id,
       );
-      if (!current) {
+      if (!current || !this.attachmentsEqual(current, approved)) {
         await this.refresh();
         await vscode.window.showWarningMessage(
           'KDNA workspace state changed after the attach confirmation. Review Workspace Attachments before continuing.',
@@ -385,6 +379,26 @@ export class WorkspaceAttachmentController implements vscode.Disposable {
     } catch (error) {
       await this.showSafeError(error);
     }
+  }
+
+  private attachmentsEqual(a: WorkspaceAttachment, b: WorkspaceAttachment): boolean {
+    return a.attachment_id === b.attachment_id &&
+      a.asset.id === b.asset.id &&
+      a.asset.version === b.asset.version &&
+      a.asset.digest === b.asset.digest &&
+      a.state === b.state &&
+      a.role === b.role &&
+      a.scope.kind === b.scope.kind &&
+      a.scope.application === b.scope.application &&
+      a.scope.matching_policy === b.scope.matching_policy &&
+      a.scope.authority === b.scope.authority &&
+      a.scope.approval_source === b.scope.approval_source &&
+      JSON.stringify([...a.scope.applies_to].sort()) ===
+        JSON.stringify([...b.scope.applies_to].sort()) &&
+      JSON.stringify([...a.scope.does_not_apply_to].sort()) ===
+        JSON.stringify([...b.scope.does_not_apply_to].sort()) &&
+      a.resolution_policy === b.resolution_policy &&
+      a.update_policy === b.update_policy;
   }
 
   private async switchAttachment(

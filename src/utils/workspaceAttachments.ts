@@ -1,4 +1,4 @@
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { lstat, realpath, stat } from 'node:fs/promises';
 import * as path from 'node:path';
 import { promisify } from 'node:util';
@@ -11,6 +11,7 @@ import {
 const execFileAsync = promisify(execFile);
 
 const MAX_OUTPUT_BYTES = 16 * 1024 * 1024;
+const MAX_ATTACHMENT_STDIN_BYTES = 64 * 1024;
 // Aligned with the pinned CLI's own bounds so every record the exact CLI can
 // emit stays parseable while anything broader still fails closed.
 const MAX_ATTACHMENTS = 1024;
@@ -83,53 +84,78 @@ export function switchApprovedArgs(
   ];
 }
 
+export interface AttachmentProposal {
+  role: string;
+  applies_to: string[];
+  does_not_apply_to: string[];
+}
+
 /**
- * Single truth for the exact CLI argument vector the "Attach File…" UI launches.
- * The UI collects role/applies-to/does-not-apply-to from the user, runs a real
- * CLI preview, shows the exact payload in a modal, and only then executes the
- * approved variant. This avoids CLI 0.36.1's terminal confirmation, which fails
- * with EAGAIN on the VS Code PTY.
+ * Build the bounded, stable JSON proposal that the "Attach File…" UI passes
+ * to the CLI through --attachment-stdin. The proposal never enters argv,
+ * environment variables, or ordinary logs.
+ */
+export function attachmentProposalBytes(proposal: AttachmentProposal): Buffer {
+  const body = JSON.stringify({
+    role: proposal.role,
+    applies_to: proposal.applies_to,
+    does_not_apply_to: proposal.does_not_apply_to,
+  });
+  if (body.length > MAX_ATTACHMENT_STDIN_BYTES) {
+    throw new WorkspaceCliError(
+      'workspace_attachment_invalid',
+      'The attachment scope proposal exceeds the size limit.',
+    );
+  }
+  return Buffer.from(body, 'utf8');
+}
+
+/**
+ * Single truth for the exact CLI argument vector the "Attach File…" UI
+ * launches. The pinned CLI reads the reviewed policy through
+ * --attachment-stdin, so role/scope never appear in argv.
  */
 export function attachBaseArgs(
   assetPath: string,
   workspaceRoot: string,
-  role: string,
-  appliesTo: string[],
-  doesNotApplyTo: string[],
 ): string[] {
   return [
     'attach',
     assetPath,
     '--cwd',
     workspaceRoot,
-    '--role',
-    role,
-    ...appliesTo.flatMap((value) => ['--applies-to', value]),
-    ...doesNotApplyTo.flatMap((value) => ['--does-not-apply-to', value]),
+    '--attachment-stdin',
   ];
 }
 
+/**
+ * Preview variant: the CLI prints the exact preview payload and performs no
+ * write. The same stdin bytes must be replayed for approved execution.
+ */
 export function attachPreviewArgs(
   assetPath: string,
   workspaceRoot: string,
-  role: string,
-  appliesTo: string[],
-  doesNotApplyTo: string[],
 ): string[] {
-  return [...attachBaseArgs(assetPath, workspaceRoot, role, appliesTo, doesNotApplyTo), '--preview'];
+  return [...attachBaseArgs(assetPath, workspaceRoot), '--preview'];
 }
 
+/**
+ * Approved-execution variant. Attach's consent facts do not include
+ * approved_at, so the preview consent_digest can be replayed across the two
+ * calls. Passing --consent-digest binds the approved execution to the exact
+ * previewed attachment proposal; any asset/workspace/scope/authorization drift
+ * makes the CLI fail with approval_binding_changed before writing bytes.
+ */
 export function attachApprovedArgs(
   assetPath: string,
   workspaceRoot: string,
-  role: string,
-  appliesTo: string[],
-  doesNotApplyTo: string[],
+  consentDigest: string,
 ): string[] {
   return [
-    ...attachBaseArgs(assetPath, workspaceRoot, role, appliesTo, doesNotApplyTo),
+    ...attachBaseArgs(assetPath, workspaceRoot),
     '--yes',
-    '--scope-user-approved',
+    '--consent-digest',
+    consentDigest,
   ];
 }
 
@@ -502,6 +528,25 @@ export function parseAttachPreview(stdout: string): AttachPreview {
   return (value as unknown as { preview: AttachPreview }).preview;
 }
 
+function validAttachResult(value: unknown): value is { attachment: WorkspaceAttachment } {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const result = value as Record<string, unknown>;
+  if (!exactKeys(result, ['operation', 'workspace_root', 'attachment'])) return false;
+  if (result.operation !== 'attach' || !boundedText(result.workspace_root)) return false;
+  return validAttachment(result.attachment);
+}
+
+export function parseAttachResult(stdout: string): WorkspaceAttachment {
+  const value = safeJson(stdout);
+  if (!validAttachResult(value)) {
+    throw new WorkspaceCliError(
+      'workspace_output_invalid',
+      'The configured KDNA CLI returned an invalid attach result.',
+    );
+  }
+  return (value as { attachment: WorkspaceAttachment }).attachment;
+}
+
 function validSwitchPreviewEnvelope(value: unknown): value is SwitchPreview {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const envelope = value as Record<string, unknown>;
@@ -670,14 +715,14 @@ export class WorkspaceCliClient {
   async attachPreview(
     workspaceRoot: string,
     assetPath: string,
-    role: string,
-    appliesTo: string[],
-    doesNotApplyTo: string[],
+    proposal: AttachmentProposal,
   ): Promise<AttachPreview> {
     const safeRoot = await this.safeWorkspaceDirectory(workspaceRoot);
-    const stdout = await this.run(
-      attachPreviewArgs(assetPath, safeRoot, role, appliesTo, doesNotApplyTo),
+    const stdin = attachmentProposalBytes(proposal);
+    const stdout = await this.runWithStdin(
+      attachPreviewArgs(assetPath, safeRoot),
       safeRoot,
+      stdin,
     );
     return parseAttachPreview(stdout);
   }
@@ -685,15 +730,17 @@ export class WorkspaceCliClient {
   async attachApproved(
     workspaceRoot: string,
     assetPath: string,
-    role: string,
-    appliesTo: string[],
-    doesNotApplyTo: string[],
-  ): Promise<unknown> {
+    proposal: AttachmentProposal,
+    consentDigest: string,
+  ): Promise<WorkspaceAttachment> {
     const safeRoot = await this.safeWorkspaceDirectory(workspaceRoot);
-    return safeJson(await this.run(
-      attachApprovedArgs(assetPath, safeRoot, role, appliesTo, doesNotApplyTo),
+    const stdin = attachmentProposalBytes(proposal);
+    const stdout = await this.runWithStdin(
+      attachApprovedArgs(assetPath, safeRoot, consentDigest),
       safeRoot,
-    ));
+      stdin,
+    );
+    return parseAttachResult(stdout);
   }
 
   async remove(workspaceRoot: string, attachmentId: string): Promise<unknown> {
@@ -777,5 +824,96 @@ export class WorkspaceCliClient {
         'The configured KDNA CLI could not complete the workspace request.',
       );
     }
+  }
+
+  private async runWithStdin(
+    args: string[],
+    cwd: string,
+    stdin: Buffer,
+  ): Promise<string> {
+    const executable = await this.executable();
+    return new Promise((resolve, reject) => {
+      const child = spawn(process.execPath, [executable, ...args], {
+        cwd,
+        env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
+        windowsHide: true,
+        shell: false,
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
+
+      let stdout = '';
+      let stderr = '';
+      let killed = false;
+      const timeout = setTimeout(() => {
+        killed = true;
+        child.kill();
+        reject(new WorkspaceCliError(
+          'workspace_cli_rejected',
+          'The configured KDNA CLI timed out while reading the attachment proposal.',
+        ));
+      }, 30_000);
+
+      child.stdout.setEncoding('utf8');
+      child.stderr.setEncoding('utf8');
+      child.stdout.on('data', (chunk: string) => {
+        stdout += chunk;
+        if (stdout.length > MAX_OUTPUT_BYTES) {
+          killed = true;
+          child.kill();
+          clearTimeout(timeout);
+          reject(new WorkspaceCliError(
+            'workspace_cli_rejected',
+            'The configured KDNA CLI returned too much output.',
+          ));
+        }
+      });
+      child.stderr.on('data', (chunk: string) => {
+        stderr += chunk;
+        if (stderr.length > MAX_OUTPUT_BYTES) {
+          killed = true;
+          child.kill();
+          clearTimeout(timeout);
+          reject(new WorkspaceCliError(
+            'workspace_cli_rejected',
+            'The configured KDNA CLI returned too much error output.',
+          ));
+        }
+      });
+
+      child.on('error', () => {
+        clearTimeout(timeout);
+        reject(new WorkspaceCliError(
+          'workspace_cli_rejected',
+          'The configured KDNA CLI could not start the workspace request.',
+        ));
+      });
+
+      child.on('close', (code) => {
+        clearTimeout(timeout);
+        if (killed) return;
+        if (code !== 0) {
+          reject(new WorkspaceCliError(
+            'workspace_cli_rejected',
+            'The configured KDNA CLI could not complete the workspace request.',
+          ));
+          return;
+        }
+        resolve(stdout);
+      });
+
+      child.stdin.write(stdin, (error) => {
+        if (error) {
+          killed = true;
+          child.kill();
+          clearTimeout(timeout);
+          reject(new WorkspaceCliError(
+            'workspace_cli_rejected',
+            'The attachment proposal could not be sent to the CLI.',
+          ));
+        } else {
+          child.stdin.end();
+        }
+      });
+    });
   }
 }

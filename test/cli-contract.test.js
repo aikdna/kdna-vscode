@@ -229,40 +229,33 @@ test('extension client consumes the real attach preview and approved execution',
   const role = 'secondary-review';
   const appliesTo = ['release'];
   const doesNotApplyTo = ['fiction'];
+  const proposal = { role, applies_to: appliesTo, does_not_apply_to: doesNotApplyTo };
 
-  const uiArgs = attachBaseArgs(attachAsset, attachWorkspace, role, appliesTo, doesNotApplyTo);
+  const uiArgs = attachBaseArgs(attachAsset, attachWorkspace);
   assert.deepEqual(uiArgs, [
     'attach',
     attachAsset,
     '--cwd',
     attachWorkspace,
-    '--role',
-    role,
-    '--applies-to',
-    appliesTo[0],
-    '--does-not-apply-to',
-    doesNotApplyTo[0],
+    '--attachment-stdin',
   ]);
-  assert.deepEqual(attachPreviewArgs(attachAsset, attachWorkspace, role, appliesTo, doesNotApplyTo), [
-    ...uiArgs,
-    '--preview',
-  ]);
-  assert.deepEqual(attachApprovedArgs(attachAsset, attachWorkspace, role, appliesTo, doesNotApplyTo), [
-    ...uiArgs,
-    '--yes',
-    '--scope-user-approved',
-  ]);
-  for (const forbidden of [
-    '--attachment-stdin', '--retain-scope', '--consent-digest',
-  ]) {
-    assert.equal(uiArgs.includes(forbidden), false);
-    assert.equal(attachApprovedArgs(attachAsset, attachWorkspace, role, appliesTo, doesNotApplyTo).includes(forbidden), false);
+  assert.deepEqual(attachPreviewArgs(attachAsset, attachWorkspace), [...uiArgs, '--preview']);
+  const digest = `sha256:${'d'.repeat(64)}`;
+  assert.deepEqual(
+    attachApprovedArgs(attachAsset, attachWorkspace, digest),
+    [...uiArgs, '--yes', '--consent-digest', digest],
+  );
+  for (const forbidden of ['--role', '--applies-to', '--does-not-apply-to', '--retain-scope', '--scope-user-approved']) {
+    assert.equal(uiArgs.includes(forbidden), false, `${forbidden} must not be in argv`);
+  }
+  for (const leaked of [role, ...appliesTo, ...doesNotApplyTo]) {
+    assert.equal(uiArgs.includes(leaked), false, 'proposal content must not leak to argv');
   }
 
   const before = await client.status(attachWorkspace);
   assert.equal(before, null, 'precondition: no existing attachment record');
 
-  const preview = await client.attachPreview(attachWorkspace, attachAsset, role, appliesTo, doesNotApplyTo);
+  const preview = await client.attachPreview(attachWorkspace, attachAsset, proposal);
   assert.equal(preview.operation, 'attach');
   assert.equal(preview.attachment.asset.id, 'kdna:example:content-review');
   assert.equal(preview.attachment.role, role);
@@ -276,20 +269,38 @@ test('extension client consumes the real attach preview and approved execution',
   const afterPreview = await client.status(attachWorkspace);
   assert.equal(afterPreview, null);
 
-  await client.attachApproved(attachWorkspace, attachAsset, role, appliesTo, doesNotApplyTo);
+  const approved = await client.attachApproved(attachWorkspace, attachAsset, proposal, preview.consent_digest);
+  assert.match(approved.attachment_id, /^att_[0-9a-f]{24}$/u);
+  assert.equal(approved.asset.id, preview.attachment.asset.id);
+  assert.equal(approved.asset.version, preview.attachment.asset.version);
+  assert.equal(approved.asset.digest, preview.attachment.asset.digest);
+  assert.equal(approved.state, 'enabled');
+  assert.equal(approved.role, preview.attachment.role);
+  assert.equal(approved.scope.kind, 'workspace');
+  assert.equal(approved.scope.application, preview.attachment.scope.application);
+  assert.equal(approved.scope.matching_policy, preview.attachment.scope.matching_policy);
+  assert.equal(approved.scope.authority, 'user_approved_routing_hint');
+  assert.equal(approved.scope.approval_source, 'preview_confirmed');
+  assert.deepEqual(approved.scope.applies_to, appliesTo);
+  assert.deepEqual(approved.scope.does_not_apply_to, doesNotApplyTo);
+  assert.equal(approved.resolution_policy, 'load_when_clear_ask_when_ambiguous');
+  assert.equal(approved.update_policy, 'explicit_switch_only');
+  assert.equal(approved.history.length, 0);
+
   const record = await client.status(attachWorkspace);
   assert.equal(record.attachments.length, 1);
-  const attached = record.attachments[0];
-  assert.equal(attached.asset.digest, preview.attachment.asset.digest);
-  assert.equal(attached.asset.id, preview.attachment.asset.id);
-  assert.equal(attached.role, preview.attachment.role);
-  assert.equal(attached.scope.application, preview.attachment.scope.application);
-  assert.equal(attached.scope.matching_policy, preview.attachment.scope.matching_policy);
-  assert.deepEqual(attached.scope.applies_to, preview.attachment.scope.applies_to);
-  assert.deepEqual(attached.scope.does_not_apply_to, preview.attachment.scope.does_not_apply_to);
-  assert.equal(attached.scope.approval_source, 'user_explicit');
-  assert.equal(attached.state, 'enabled');
-  assert.equal(attached.history.length, 0);
+  const current = record.attachments.find(
+    ({ attachment_id: attachmentId }) => attachmentId === approved.attachment_id,
+  );
+  assert.ok(current, 'status must contain the approved attachment_id');
+  assert.equal(current.asset.id, approved.asset.id);
+  assert.equal(current.asset.version, approved.asset.version);
+  assert.equal(current.asset.digest, approved.asset.digest);
+  assert.equal(current.state, approved.state);
+  assert.equal(current.role, approved.role);
+  assert.equal(current.scope.approval_source, approved.scope.approval_source);
+  assert.deepEqual(current.scope.applies_to, approved.scope.applies_to);
+  assert.deepEqual(current.scope.does_not_apply_to, approved.scope.does_not_apply_to);
 });
 
 test('a missing attach asset fails closed without partial writes', { skip }, async () => {
@@ -300,11 +311,111 @@ test('a missing attach asset fails closed without partial writes', { skip }, asy
   const before = await client.status(attachWorkspace);
   assert.equal(before, null);
   await assert.rejects(
-    () => client.attachApproved(attachWorkspace, missing, 'role', ['scope'], []),
+    () => client.attachApproved(
+      attachWorkspace,
+      missing,
+      { role: 'role', applies_to: ['scope'], does_not_apply_to: [] },
+      `sha256:${'0'.repeat(64)}`,
+    ),
     (error) => error instanceof Error && /workspace/.test(error.message),
   );
   const after = await client.status(attachWorkspace);
   assert.equal(after, null);
+});
+
+test('attach approval rejects asset byte drift before writing', { skip }, async () => {
+  const attachWorkspace = fs.mkdtempSync(path.join(os.tmpdir(), 'kdna-vscode-cli-attach-drift-'));
+  roots.push(attachWorkspace);
+  const attachAsset = path.join(attachWorkspace, 'asset.kdna');
+  cli(['demo', 'judgment', path.join(attachWorkspace, 'assets')], attachWorkspace);
+  cli(['pack', path.join(attachWorkspace, 'assets'), attachAsset], attachWorkspace);
+
+  const client = new WorkspaceCliClient(CLI_ENTRY);
+  const proposal = { role: 'r', applies_to: ['s'], does_not_apply_to: [] };
+  const preview = await client.attachPreview(attachWorkspace, attachAsset, proposal);
+  const originalDigest = preview.attachment.asset.digest;
+
+  // Corrupt the asset after preview.
+  fs.appendFileSync(attachAsset, Buffer.from([0x00]));
+
+  await assert.rejects(
+    () => client.attachApproved(attachWorkspace, attachAsset, proposal, preview.consent_digest),
+    (error) => error instanceof Error && /workspace/.test(error.message),
+  );
+  const after = await client.status(attachWorkspace);
+  assert.equal(after, null, 'no attachment record must be created after drift');
+
+  // Restore asset and prove the same digest preview would have succeeded.
+  fs.writeFileSync(attachAsset, fs.readFileSync(attachAsset).subarray(0, -1));
+  const restored = await client.status(attachWorkspace);
+  assert.equal(restored, null);
+});
+
+test('attach approval rejects scope proposal drift before writing', { skip }, async () => {
+  const attachWorkspace = fs.mkdtempSync(path.join(os.tmpdir(), 'kdna-vscode-cli-attach-scope-'));
+  roots.push(attachWorkspace);
+  const attachAsset = path.join(attachWorkspace, 'asset.kdna');
+  cli(['demo', 'judgment', path.join(attachWorkspace, 'assets')], attachWorkspace);
+  cli(['pack', path.join(attachWorkspace, 'assets'), attachAsset], attachWorkspace);
+
+  const client = new WorkspaceCliClient(CLI_ENTRY);
+  const proposal = { role: 'r', applies_to: ['s'], does_not_apply_to: [] };
+  const preview = await client.attachPreview(attachWorkspace, attachAsset, proposal);
+
+  const drifted = { role: 'changed', applies_to: ['s'], does_not_apply_to: [] };
+  await assert.rejects(
+    () => client.attachApproved(attachWorkspace, attachAsset, drifted, preview.consent_digest),
+    (error) => error instanceof Error && /workspace/.test(error.message),
+  );
+  const after = await client.status(attachWorkspace);
+  assert.equal(after, null);
+});
+
+test('attach approval rejects a wrong consent digest before writing', { skip }, async () => {
+  const attachWorkspace = fs.mkdtempSync(path.join(os.tmpdir(), 'kdna-vscode-cli-attach-digest-'));
+  roots.push(attachWorkspace);
+  const attachAsset = path.join(attachWorkspace, 'asset.kdna');
+  cli(['demo', 'judgment', path.join(attachWorkspace, 'assets')], attachWorkspace);
+  cli(['pack', path.join(attachWorkspace, 'assets'), attachAsset], attachWorkspace);
+
+  const client = new WorkspaceCliClient(CLI_ENTRY);
+  const proposal = { role: 'r', applies_to: ['s'], does_not_apply_to: [] };
+  await client.attachPreview(attachWorkspace, attachAsset, proposal);
+
+  await assert.rejects(
+    () => client.attachApproved(
+      attachWorkspace,
+      attachAsset,
+      proposal,
+      `sha256:${'0'.repeat(64)}`,
+    ),
+    (error) => error instanceof Error && /workspace/.test(error.message),
+  );
+  const after = await client.status(attachWorkspace);
+  assert.equal(after, null);
+});
+
+test('attach approval returns a distinct attachment_id even when an identical attachment already exists', { skip }, async () => {
+  const attachWorkspace = fs.mkdtempSync(path.join(os.tmpdir(), 'kdna-vscode-cli-attach-dup-'));
+  roots.push(attachWorkspace);
+  const attachAsset = path.join(attachWorkspace, 'asset.kdna');
+  cli(['demo', 'judgment', path.join(attachWorkspace, 'assets')], attachWorkspace);
+  cli(['pack', path.join(attachWorkspace, 'assets'), attachAsset], attachWorkspace);
+
+  const client = new WorkspaceCliClient(CLI_ENTRY);
+  const proposal = { role: 'r', applies_to: ['s'], does_not_apply_to: [] };
+
+  const preview1 = await client.attachPreview(attachWorkspace, attachAsset, proposal);
+  const approved1 = await client.attachApproved(attachWorkspace, attachAsset, proposal, preview1.consent_digest);
+
+  const preview2 = await client.attachPreview(attachWorkspace, attachAsset, proposal);
+  const approved2 = await client.attachApproved(attachWorkspace, attachAsset, proposal, preview2.consent_digest);
+
+  assert.notEqual(approved1.attachment_id, approved2.attachment_id);
+  const record = await client.status(attachWorkspace);
+  assert.equal(record.attachments.length, 2);
+  assert.ok(record.attachments.some(({ attachment_id: id }) => id === approved1.attachment_id));
+  assert.ok(record.attachments.some(({ attachment_id: id }) => id === approved2.attachment_id));
 });
 
 test('a drifted or missing replacement asset fails closed without partial writes', { skip }, async () => {

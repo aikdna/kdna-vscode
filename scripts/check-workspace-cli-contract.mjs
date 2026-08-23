@@ -105,6 +105,12 @@ if (!unitTestSource.includes('attachBaseArgs(') ||
     !unitTestSource.includes('attachApprovedArgs(')) {
   fail('unit tests must exercise the single attach argument builders');
 }
+if (!unitTestSource.includes('--attachment-stdin') || !unitTestSource.includes('--consent-digest')) {
+  fail('unit tests must exercise the attach --attachment-stdin + --consent-digest contract');
+}
+if (unitTestSource.includes("attachApprovedArgs('asset.kdna', 'ws', 'role'")) {
+  fail('unit tests must not pass role/scope as positional argv to attachApprovedArgs');
+}
 for (const neighboring of ['0.36.0', '0.36.2', '0.37.0']) {
   if (!unitTestSource.includes(`'${neighboring}'`)) {
     fail(`unit tests must keep the fail-closed case for CLI ${neighboring}`);
@@ -127,6 +133,12 @@ if (!contractTestSource.includes('attachBaseArgs(') ||
     !contractTestSource.includes('attachPreviewArgs(') ||
     !contractTestSource.includes('attachApprovedArgs(')) {
   fail('real-CLI contract test must consume the single attach argument builders');
+}
+if (!contractTestSource.includes('--attachment-stdin') || !contractTestSource.includes('--consent-digest')) {
+  fail('real-CLI contract test must exercise the attach --attachment-stdin + --consent-digest contract');
+}
+if (contractTestSource.includes('attachApprovedArgs(attachAsset, attachWorkspace, role')) {
+  fail('real-CLI contract test must not pass role/scope as positional argv to attachApprovedArgs');
 }
 
 console.log(`Workspace CLI contract gate passed: exact CLI ${version}, record schema ${schemaVersion}.`);
