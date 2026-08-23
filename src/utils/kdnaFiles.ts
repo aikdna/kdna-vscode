@@ -4,6 +4,59 @@
 
 import * as vscode from 'vscode';
 import { KDNA_ALL_FILES } from '../constants';
+import { validateLocalKdnaUri } from './kdnaFilePicker';
+
+/**
+ * Pick a local .kdna asset file through the native file dialog.
+ *
+ * The dialog does NOT set an extension filter. macOS/Electron extension filters
+ * disable the Open button for unrecognized extensions such as `.kdna`; the Host
+ * validates the selection after the dialog returns. This keeps the native filter
+ * as a UX helper only and never as a security boundary.
+ *
+ * Returns null when the user cancels or when the selected path fails any of:
+ * - URI scheme must be `file`;
+ * - basename must end with lowercase `.kdna`;
+ * - basename must not be only `.kdna`;
+ * - path must exist and be a regular file (not a directory).
+ */
+export async function pickLocalKdnaFile(options: {
+  title: string;
+  defaultUri?: vscode.Uri;
+}): Promise<vscode.Uri | null> {
+  const uris = await vscode.window.showOpenDialog({
+    canSelectFiles: true,
+    canSelectFolders: false,
+    canSelectMany: false,
+    defaultUri: options.defaultUri,
+    title: options.title,
+  });
+  const uri = uris?.[0];
+  if (!uri) return null;
+
+  const validation = validateLocalKdnaUri(uri.scheme, uri.path);
+  if (!validation.ok) {
+    await vscode.window.showErrorMessage(`KDNA: ${validation.reason}`);
+    return null;
+  }
+
+  let info;
+  try {
+    info = await vscode.workspace.fs.stat(uri);
+  } catch {
+    await vscode.window.showErrorMessage(
+      `KDNA: File does not exist or cannot be read: ${uri.fsPath}`,
+    );
+    return null;
+  }
+  if (info.type !== vscode.FileType.File) {
+    await vscode.window.showErrorMessage(
+      `KDNA: Selected path is not a regular file: ${uri.fsPath}`,
+    );
+    return null;
+  }
+  return uri;
+}
 
 /**
  * Check if a directory is an expanded KDNA project view.

@@ -47,8 +47,9 @@ select the `.vsix` file.
 
 ### Pointing the extension at the CLI
 
-Workspace attachment controls need an explicit path to the official CLI entry
-(`@aikdna/kdna-cli@0.36.1` or later). Add this to your workspace settings:
+Workspace attachment controls need an explicit path to the official CLI entry:
+the exact published `@aikdna/kdna-cli@0.36.1`. Any other CLI version fails
+closed (no version range is accepted). Add this to your workspace settings:
 
 ```json
 {
@@ -75,9 +76,16 @@ controls disabled), and no fallback CLI or `PATH` scan is attempted.
    projected through the official LoadPlan and Runtime Capsule contracts.
 5. **Check attachments.** Run **KDNA: Workspace Attachments** to see the active
    workspace's approved identity, digest, role, scope, and enabled state, then
-   disable/enable, switch, rollback offline, or remove the relation. Attach and
-   switch run the official CLI in an interactive terminal so its exact preview
-   and confirmation remain authoritative.
+   disable/enable, switch, rollback offline, or remove the relation.
+   - **Attach** runs `attach --attachment-stdin --preview` with a bounded JSON
+     proposal, shows the exact CLI preview in a VS Code modal, and only then
+     executes `attach --attachment-stdin --yes --consent-digest <preview digest>`.
+     The consent digest binds the approved execution to the exact previewed
+     proposal; any asset/workspace/scope/authorization drift makes the CLI fail
+     with `approval_binding_changed` before writing bytes.
+   - **Switch** runs `switch --retain-scope --preview`, shows the CLI preview in
+     a modal, and executes `switch --retain-scope --yes --scope-user-approved`.
+   - Destructive-looking controls use confirmation or an immediate undo action.
 
 ---
 

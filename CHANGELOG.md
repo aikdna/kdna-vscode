@@ -15,13 +15,26 @@
   escape preview rendering, and add compile, lint, and unit coverage for
   blocked LoadPlans and Capsule delivery.
 - Add a workspace-scoped status and control surface that delegates only to an
-  explicitly configured exact CLI 0.36.0 entry. It shows identity,
+  explicitly configured exact CLI 0.36.1 entry. It shows identity,
   version, digest, role, scope, and enabled state without reading or parsing
   `.kdna/attachments.json` directly.
+- Pin the workspace-attachment contract to one version truth: exact CLI
+  0.36.1 with the 0.3.0 record schema it emits. Older or newer CLI versions
+  and legacy record schemas fail closed, and a drift gate checks the source,
+  README, setting description, CHANGELOG, and test fixtures against the
+  single contract constant.
 - Provide explicit disable/enable, switch, offline rollback, relation-only
-  remove, and attach entry points. Attach and switch retain the CLI's native
-  exact preview and positive terminal confirmation; destructive-looking
-  controls use confirmation or an immediate undo action.
+  remove, and attach entry points. Switch retains the CLI's native exact
+  preview and executes `switch --retain-scope --yes --scope-user-approved` after
+  a modal confirmation, because the CLI's terminal confirmation fails with
+  `EAGAIN` on the VS Code PTY and its cross-call consent digest embeds the
+  per-invocation `approved_at` timestamp. Attach uses the CLI's bounded
+  `--attachment-stdin` contract: the exact JSON proposal is sent through stdin,
+  the CLI returns a preview with a stable consent digest, and the approved
+  execution replays the same stdin bytes with `--yes --consent-digest <digest>`;
+  any asset/workspace/scope/authorization drift is rejected by the CLI before
+  writing bytes. Destructive-looking controls use confirmation or an immediate
+  undo action.
 - Keep multi-root workspaces separate and fail closed when the CLI is absent,
   incompatible, produces an extended record, or rejects the request. No PATH
   discovery, global asset scan, password input, or entitlement claim is added.

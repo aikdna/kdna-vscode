@@ -44,6 +44,32 @@ jobs:
       - name: Package VSIX
         run: npx vsce package
 
+  cli-contract:
+    name: cli-contract (real pinned kdna-cli)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/checkout@v6
+        with:
+          repository: aikdna/kdna-cli
+          ref: 8bbd47c2f436bf638e6393aeda029e5fcba1bd32
+          path: .cross-repo/kdna-cli
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24.x'
+          cache: 'npm'
+      - run: npm ci
+      - name: Install the pinned CLI dependencies
+        working-directory: .cross-repo/kdna-cli
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verify the pinned CLI version
+        run: node .cross-repo/kdna-cli/src/cli.js --version | grep -Fx 0.36.1
+      - name: Real-CLI workspace attachment contract
+        run: npm run test:cli-contract
+        env:
+          KDNA_CLI_ENTRY: ${{ github.workspace }}/.cross-repo/kdna-cli/src/cli.js
+
   macos-keychain-isolation:
     name: macos-keychain-isolation
     runs-on: macos-14

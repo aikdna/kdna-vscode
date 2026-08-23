@@ -1,10 +1,14 @@
 import * as vscode from 'vscode';
 import { COMMANDS } from '../../constants';
+import { pickLocalKdnaFile } from '../../utils/kdnaFiles';
 import {
+  AttachmentProposal,
+  WORKSPACE_CLI_VERSION,
   WorkspaceAttachment,
   WorkspaceAttachmentRecord,
   WorkspaceCliClient,
   WorkspaceCliError,
+  attachmentRecordsEqual,
 } from '../../utils/workspaceAttachments';
 
 interface AttachmentItem extends vscode.QuickPickItem {
@@ -106,7 +110,7 @@ export class WorkspaceAttachmentController implements vscode.Disposable {
     const client = this.configuredClient(folder);
     if (client) return client;
     const choice = await vscode.window.showWarningMessage(
-      'KDNA workspace controls are disabled until the exact CLI 0.36.0 src/cli.js entry is configured for this workspace.',
+      `KDNA workspace controls are disabled until the exact CLI ${WORKSPACE_CLI_VERSION} src/cli.js entry is configured for this workspace.`,
       'Open Settings',
     );
     if (choice === 'Open Settings') {
@@ -293,16 +297,11 @@ export class WorkspaceAttachmentController implements vscode.Disposable {
     if (!folder) return;
     const client = await this.requireClient(folder);
     if (!client) return;
-    const files = await vscode.window.showOpenDialog({
-      canSelectFiles: true,
-      canSelectFolders: false,
-      canSelectMany: false,
+    const asset = await pickLocalKdnaFile({
       defaultUri: folder.uri,
-      filters: { 'KDNA Asset': ['kdna'] },
       title: `Select the exact KDNA file to attach to ${folder.name}`,
     });
-    const asset = files?.[0];
-    if (!asset || asset.scheme !== 'file') return;
+    if (!asset) return;
     const role = await vscode.window.showInputBox({
       title: 'KDNA attachment role',
       prompt: 'Name the narrow role this asset has in the workspace.',
@@ -327,17 +326,60 @@ export class WorkspaceAttachmentController implements vscode.Disposable {
     });
     if (excludesText === undefined) return;
 
-    const args = [
-      'attach',
-      asset.fsPath,
-      '--cwd',
-      folder.uri.fsPath,
-      '--role',
-      role.trim(),
-      ...commaSeparated(appliesText).flatMap((value) => ['--applies-to', value]),
-      ...commaSeparated(excludesText).flatMap((value) => ['--does-not-apply-to', value]),
-    ];
-    await this.launchApprovalTerminal(folder, client, 'KDNA Attach', args);
+    const proposal: AttachmentProposal = {
+      role: role.trim(),
+      applies_to: commaSeparated(appliesText),
+      does_not_apply_to: commaSeparated(excludesText),
+    };
+    try {
+      const preview = await client.attachPreview(
+        folder.uri.fsPath,
+        asset.fsPath,
+        proposal,
+      );
+      const confirmation = await vscode.window.showWarningMessage(
+        [
+          `Attach ${preview.attachment.asset.id}@${preview.attachment.asset.version} to ${folder.name}?`,
+          '',
+          `Digest: ${preview.attachment.asset.digest}`,
+          `Role: ${preview.attachment.role}`,
+          `Applies: ${preview.attachment.scope.applies_to.join(', ') || 'none'}`,
+          `Excludes: ${preview.attachment.scope.does_not_apply_to.join(', ') || 'none'}`,
+          `Access: ${preview.authorization.access} · ` +
+            `load plan: ${preview.authorization.load_plan_state}`,
+          '',
+          'The CLI preview above is the exact payload; confirm to execute the attachment.',
+        ].join('\n'),
+        { modal: true },
+        'Confirm Attach',
+      );
+      if (confirmation !== 'Confirm Attach') return;
+      const approved = await client.attachApproved(
+        folder.uri.fsPath,
+        asset.fsPath,
+        proposal,
+        preview.consent_digest,
+      );
+      const record = await client.status(folder.uri.fsPath);
+      const current = record?.attachments.find(
+        ({ attachment_id: attachmentId }) => attachmentId === approved.attachment_id,
+      );
+      if (!current || !this.attachmentsEqual(current, approved)) {
+        await this.refresh();
+        await vscode.window.showWarningMessage(
+          'KDNA workspace state changed after the attach confirmation. Review Workspace Attachments before continuing.',
+        );
+        return;
+      }
+      await this.refresh();
+      await vscode.window.showInformationMessage(`KDNA: attached ${current.asset.id}.`);
+    } catch (error) {
+      await this.showSafeError(error);
+    }
+  }
+
+  private attachmentsEqual(a: WorkspaceAttachment, b: WorkspaceAttachment): boolean {
+    return attachmentRecordsEqual(a, b);
   }
 
   private async switchAttachment(
@@ -346,25 +388,57 @@ export class WorkspaceAttachmentController implements vscode.Disposable {
   ): Promise<void> {
     const client = await this.requireClient(folder);
     if (!client) return;
-    const files = await vscode.window.showOpenDialog({
-      canSelectFiles: true,
-      canSelectFolders: false,
-      canSelectMany: false,
+    const asset = await pickLocalKdnaFile({
       defaultUri: folder.uri,
-      filters: { 'KDNA Asset': ['kdna'] },
       title: `Select the exact replacement for ${attachment.asset.id}`,
     });
-    const asset = files?.[0];
-    if (!asset || asset.scheme !== 'file') return;
+    if (!asset) return;
     try {
       if (!await this.isCurrentAttachment(folder, client, attachment)) return;
-      await this.launchApprovalTerminal(folder, client, 'KDNA Switch', [
-        'switch',
+      const preview = await client.switchPreview(
+        folder.uri.fsPath,
         attachment.attachment_id,
         asset.fsPath,
-        '--cwd',
+      );
+      const confirmation = await vscode.window.showWarningMessage(
+        [
+          `Switch ${attachment.asset.id}@${attachment.asset.version} to ` +
+            `${preview.new_attachment.asset.id}@${preview.new_attachment.asset.version}?`,
+          '',
+          `Replacement digest: ${preview.new_attachment.asset.digest}`,
+          `Role (retained): ${preview.new_attachment.role}`,
+          `Applies: ${preview.new_attachment.scope.applies_to.join(', ') || 'none'}`,
+          `Excludes: ${preview.new_attachment.scope.does_not_apply_to.join(', ') || 'none'}`,
+          `Access: ${preview.authorization.new.access} · ` +
+            `load plan: ${preview.authorization.new.load_plan_state}`,
+          '',
+          'The CLI preview above is the exact payload; confirm to execute the ' +
+            'scope-retaining switch. Roll Back restores the previous snapshot.',
+        ].join('\n'),
+        { modal: true },
+        'Confirm Switch',
+      );
+      if (confirmation !== 'Confirm Switch') return;
+      await client.switchApproved(
         folder.uri.fsPath,
-      ]);
+        attachment.attachment_id,
+        asset.fsPath,
+      );
+      const record = await client.status(folder.uri.fsPath);
+      const current = record?.attachments.find(
+        ({ attachment_id: attachmentId }) => attachmentId === attachment.attachment_id,
+      );
+      if (!current || current.asset.digest !== preview.new_attachment.asset.digest) {
+        await this.refresh();
+        await vscode.window.showWarningMessage(
+          'KDNA workspace state changed after the switch confirmation. Review Workspace Attachments before continuing.',
+        );
+        return;
+      }
+      await this.refresh();
+      await vscode.window.showInformationMessage(
+        `KDNA: switched ${current.asset.id}.`,
+      );
     } catch (error) {
       await this.showSafeError(error);
     }
@@ -385,32 +459,6 @@ export class WorkspaceAttachmentController implements vscode.Disposable {
       'KDNA workspace state changed after these controls opened. Reopen Workspace Attachments to act on the current state.',
     );
     return false;
-  }
-
-  private async launchApprovalTerminal(
-    folder: vscode.WorkspaceFolder,
-    client: WorkspaceCliClient,
-    name: string,
-    args: string[],
-  ): Promise<void> {
-    try {
-      const executable = await client.executable();
-      const terminal = vscode.window.createTerminal({
-        name,
-        shellPath: process.execPath,
-        shellArgs: [executable, ...args],
-        cwd: folder.uri,
-        env: { ELECTRON_RUN_AS_NODE: '1' },
-      });
-      const closeListener = vscode.window.onDidCloseTerminal((closed) => {
-        if (closed !== terminal) return;
-        closeListener.dispose();
-        void this.refresh();
-      });
-      terminal.show();
-    } catch (error) {
-      await this.showSafeError(error);
-    }
   }
 
   private async refresh(): Promise<void> {
